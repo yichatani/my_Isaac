@@ -6,7 +6,9 @@ app_launcher = AppLauncher(headless=False)
 simulation_app = app_launcher.app
 
 """Rest everything follows."""
-from pxr import Usd
+import sys
+import signal
+#from pxr import Usd
 from omni.isaac.lab.sim import SimulationContext
 from omni.isaac.core import World 
 from omni.isaac.core.utils.stage import open_stage
@@ -14,10 +16,17 @@ from omni.isaac.core.utils.prims import get_prim_at_path
 #from omni.isaac.core.articulations import ArticulationController
 #from omni.isaac.core.utils.types import ArticulationAction
 
+def handle_signal(signum, frame):
+    simulation_context.stop()
+    print("Simulation completed.")
+    simulation_app.close()
+    sys.exit(0)
+
+
 if __name__ == "__main__":
     
     # Load the saved USD scene
-    usd_file_path = "./hello_Isaac.usd"  # Update with your actual path
+    usd_file_path = "./hello_Isaac.usd"  
     open_stage(usd_path=usd_file_path)
 
     # Create a World instance
@@ -43,26 +52,19 @@ if __name__ == "__main__":
 
     simulation_context.reset()
 
-    for step_count in range(120):
+    # launch simulation
+    # try:
+    while True:
+
+        # >>>>>>>>>> Add how you control your robot here
+
+
+        # <<<<<<<<<<
+
         simulation_context.step()
-    
-    simulation_context.stop()
+        signal.signal(signal.SIGINT, handle_signal)
+            
+            
 
-    del world
-    del robot
-    # stage = Usd.Stage.Open(usd_file_path)
-    # stage.GetRootLayer().Clear()
-
-    print("Simulation completed.")
-    # Close the simulation app
-    simulation_app.close()
-    
-
-# # Start the simulation loop
-# while simulation_app.is_running():
-#     world.step(render=True)
-
-# # Close the SimulationApp
-# simulation_app.close()
 
 
