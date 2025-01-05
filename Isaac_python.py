@@ -1,18 +1,33 @@
 """Launch the simulation_app first."""
 
 from omni.isaac.lab.app import AppLauncher
+from omni.kit.app import get_app
 # launch omniverse app
 app_launcher = AppLauncher(headless=False)
 simulation_app = app_launcher.app
+
+
+extension_manager = get_app().get_extension_manager()
+extension_manager.set_extension_enabled("omni.isaac.motion_generation",True)
+
+#import omni.isaac.motion_generation
+
+#print("everything ok!")
+#exit()
+
 
 """Rest everything follows."""
 import sys
 import signal
 #from pxr import Usd
 from omni.isaac.lab.sim import SimulationContext
-from omni.isaac.core import World 
-from omni.isaac.core.utils.stage import open_stage
-from omni.isaac.core.utils.prims import get_prim_at_path
+from omni.isaac.core import World  # type: ignore
+from omni.isaac.core.utils.stage import open_stage # type: ignore
+from omni.isaac.core.utils.prims import get_prim_at_path # type: ignore
+#from omni.isaac.motion_generation.motion_policy_interface import MotionPolicy # type: ignore
+
+
+
 #from omni.isaac.core.articulations import ArticulationController
 #from omni.isaac.core.utils.types import ArticulationAction
 
@@ -32,6 +47,9 @@ if __name__ == "__main__":
     # Create a World instance
     world = World()
     world.reset()
+
+    # Create MotionPolicy
+    # mp = MotionPolicy()
 
     # Locate robot in the scene
     robot_path = "/ur10e"  
