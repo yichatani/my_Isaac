@@ -19,6 +19,7 @@ from omni.isaac.lab.sim import SimulationContext
 # print("aaa")
 # exit()
 from omni.isaac.core import World  # type: ignore
+from omni.isaac.core.prims import RigidPrim # type: ignore
 from omni.isaac.core.utils.stage import open_stage # type: ignore
 from omni.isaac.core.utils.prims import get_prim_at_path # type: ignore
 from omni.isaac.motion_generation.motion_policy_interface import MotionPolicy # type: ignore
@@ -82,7 +83,16 @@ if __name__ == "__main__":
     # get_joint_info(robot)
 
     # Get global pose of end
+    robotiqpad_R_path = "/ur10e/right_inner_finger_pad"
+    robotiqpad_L_path = "/ur10e/left_inner_finger_pad"
     
+    robotiqpad_R = RigidPrim(prim_path = robotiqpad_R_path)
+    robotiqpad_L = RigidPrim(prim_path = robotiqpad_L_path)
+    robotiqpad_R_world = robotiqpad_R.get_world_pose()
+    robotiqpad_L_world = robotiqpad_L.get_world_pose()
+
+    print("right:",robotiqpad_R_world)
+    print("left:",robotiqpad_L_world)
     
     # get simulation context
     simulation_context = SimulationContext()
