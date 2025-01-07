@@ -57,7 +57,6 @@ def initialize_robot(robot_path):
     robot = Articulation(prim_path=robot_path)
     robot.initialize()
     print("Available DOF Names:",robot.dof_names)
-    enable_collision(robot_path)
     return robot
 
 def initialize_simulation_context():
@@ -69,8 +68,10 @@ def initialize_simulation_context():
 
 def get_target_pose():
     """Define the target pose for the end effector."""
+    # target_position = np.array([0.864, 0.274, 0.962])  # (x, y, z)
+    # target_orientation = np.array([0.707, -0.707, 0, 0])  # Quaternion (qx, qy, qz, qw)
     target_position = np.array([0.5, 0.0, 0.5])  # (x, y, z)
-    target_orientation = np.array([0, 0, 0, 1])  # Quaternion (qx, qy, qz, qw)
+    target_orientation = np.array([0, 0, 0, 1])  # (qx, qy, qz, qw)
     return target_position, target_orientation
 
 def setup_kinematics_solver(robot, yaml_path, urdf_path):
@@ -94,17 +95,19 @@ def main():
     usd_file_path = os.path.join(ROOT_DIR, "hello_Isaac.usd")
     urdf_path = os.path.join(ROOT_DIR, "ur10e_with_gripper.urdf")
     yaml_path = os.path.join(ROOT_DIR, "ur10e_with_gripper_updated.yaml")
+    robot_path = "/ur10e"
 
     # Open the stage
     open_stage(usd_path=usd_file_path)
+
+    # Enable collision
+    enable_collision(robot_path)
 
     # Initialize the world and simulation context
     world = World()
     simulation_context = initialize_simulation_context()
 
     # Locate and initialize the robot
-    robot_path = "/ur10e"
-    find_robot(robot_path)
     robot = initialize_robot(robot_path)
     complete_joint_positions = np.zeros(12)
     print(f"Joint Positions to Set: {complete_joint_positions}")
