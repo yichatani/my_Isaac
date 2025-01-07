@@ -90,6 +90,7 @@ if __name__ == "__main__":
         urdf_path=os.path.join(ROOT_DIR, "ur10e_with_gripper.urdf")
     )
 
+    ###################################################
     # Get global pose of end
     robotiqpad_R_path = "/ur10e/right_inner_finger_pad"
     robotiqpad_L_path = "/ur10e/left_inner_finger_pad"
@@ -111,7 +112,7 @@ if __name__ == "__main__":
     grasp_width = None
     grasp_translation_camera = None
     grasp_rotation_camera = None  #should be a matrix
-
+    ###################################################
 
 
     # set pose
