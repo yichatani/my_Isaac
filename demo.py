@@ -9,6 +9,7 @@ def enable_extensions():
     extension_manager.set_extension_enabled("omni.physx", True)
 enable_extensions()
 
+"""Rest everything follows."""
 # Import necessary libraries
 import os
 import sys
@@ -22,16 +23,51 @@ from omni.isaac.core.utils.prims import is_prim_path_valid # type: ignore
 from omni.isaac.motion_generation import LulaKinematicsSolver, ArticulationKinematicsSolver # type: ignore
 from omni.isaac.core.simulation_context import SimulationContext # type: ignore
 from omni.isaac.core.utils.prims import get_prim_at_path # type: ignore
-from pxr import UsdPhysics, UsdGeom
+from pxr import UsdPhysics, Sdf
+#from omni.isaac.core.utils.collision import check_collision # type: ignore
 
-def enable_collision(robot_path):
-    robot_prim = get_prim_at_path(robot_path)
-    for link in robot_prim.GetChildren():
-        collision_api = UsdPhysics.CollisionAPI.Apply(link)
-        if collision_api:
-            print(f"Collision enabled for {link.GetName()}")
-        else:
-            print(f"Failed to enable collision for {link.GetName()}")
+
+# def enable_collision_for_prim(prim_path):
+#     prim = get_prim_at_path(prim_path)
+#     if not UsdPhysics.CollisionAPI.Get(prim):
+#         UsdPhysics.CollisionAPI.Apply(prim)
+
+
+# def enable_collision(robot_path):
+#     robot_prim = get_prim_at_path(robot_path)
+#     for link in robot_prim.GetChildren():
+#         collision_api = UsdPhysics.CollisionAPI.Apply(link)
+#         if collision_api:
+#             print(f"Collision enabled for {link.GetName()}")
+#         else:
+#             print(f"Failed to enable collision for {link.GetName()}")
+
+# def check_for_collisions(simulation_context):
+#     """Custom function to detect collisions in the simulation."""
+#     collision_detected = False
+#     contacts = simulation_context._physics_context.get_physx_contact_report()
+#     if contacts:
+#         for contact in contacts:
+#             print(f"Collision detected between {contact['prim0']} and {contact['prim1']}")
+#             collision_detected = True
+#     return collision_detected
+
+# def enable_self_collision(robot_path):
+#     """Enable self-collision for all links of a robot."""
+#     robot_prim = get_prim_at_path(robot_path)
+#     if not robot_prim:
+#         print(f"Robot prim not found at path: {robot_path}")
+#         return
+
+#     for link in robot_prim.GetChildren():
+#         # Check if the link already has PhysicsCollisionAPI
+#         if not UsdPhysics.CollisionAPI.Has(link):
+#             UsdPhysics.CollisionAPI.Apply(link)
+#         # Set self-collision enabled for each link
+#         collision_api = UsdPhysics.CollisionAPI(link)
+#         if collision_api:
+#             collision_api.GetOrCreateAttribute("physics:enableSelfCollision", Sdf.ValueTypeNames.Bool).Set(True)
+#             print(f"Enabled self-collision for {link.GetName()}")
 
 
 def handle_signal(signum, frame):
@@ -56,7 +92,14 @@ def initialize_robot(robot_path):
     """Initialize the robot articulation."""
     robot = Articulation(prim_path=robot_path)
     robot.initialize()
-    print("Available DOF Names:",robot.dof_names)
+
+    # launch self_collision
+    robot.set_enabled_self_collisions(True)
+    print(f"Self-collision enabled: {robot.get_enabled_self_collisions()}")
+
+    robot.set_solver_position_iteration_count(64)
+    robot.set_solver_velocity_iteration_count(64)
+    print("Available DOF Names:", robot.dof_names)
     return robot
 
 def initialize_simulation_context():
@@ -100,11 +143,12 @@ def main():
     # Open the stage
     open_stage(usd_path=usd_file_path)
 
-    # Enable collision
-    enable_collision(robot_path)
+    # Enable robot collision
+    # enable_collision(robot_path)
+    # enable_collision_for_prim()
 
     # Initialize the world and simulation context
-    world = World()
+    # world = World()
     simulation_context = initialize_simulation_context()
 
     # Locate and initialize the robot
@@ -164,6 +208,14 @@ def main():
             # print("bbbbbb")
             # print(trajectory)
             #exit()
+
+            # for step, joint_position in enumerate(trajectory):
+            #     robot.set_joint_positions(joint_position)
+            #     simulation_context.step(render=True)
+            #     if check_for_collisions(simulation_context):
+            #         print(f"Collision detected at step {step}. Stopping simulation.")
+            #         break
+
 
 
             # complete_joint_positions[len(joint_positions):] = gripper_joint_positions
