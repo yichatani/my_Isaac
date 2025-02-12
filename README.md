@@ -1,12 +1,88 @@
 # my_Isaac
 
+
+
 ## Logs 
+
+**[2025/2/13]**
+
+**Progress:** Finish the Grasping System. 
+
+**Next Step:** Recording Data. There are two things I can do now. First, initialize the stage randomly and automatically. Second, write the recording codes to record data. 
+
+
+
+**[2025/2/7]**
+
+**Issues:** The Grasping faces physical problems. The grasp penetrates the objects. 
+
+**Solution:** Change the way of controlling the gripper from position control to effort control. 
+
+
+
+**[2025/2/3]**
+
+**Issues:** The camera's image is distorted. The camera's calibration intrinsic data is something wrong. 
+
+**Solution:** Change the calibration data send into the grasp detector module differently (Shown in the code).
+
+
+
+**[2025/1/25]**
+
+**Issues:** The motion planning method including RRT and Rmpflow does not work very well. 
+
+**Solution:** Deprecate them for now. Use AKsolver directly instead. 
+
+
+
+**[2025/1/20]**
+
+**Issues:** The transformation is not always right. 
+
+**Solution:** Tortured. But getting it right at last. 
+
+
 
 **[2025/1/5]**
 
-**Issues:** can't find a module(omni.isaac.motion_planning).
+**Issues:** I can't find a module(omni.isaac.motion_planning).
 
-**Solution:** activate it, add its path to let it be found.
+**Solution:** Activate it and add its path to let it be found.
+
+
+
+## Project Overview
+
+A universal and modular grasp-related task simulation platform built in Isaac SIm. 
+
+
+
+## Repository Structure
+
+
+
+```
+my_Isaac/
+├── scripts/
+│   ├── modules/
+│   │   ├── control.py        		# Control the robot, camera and gripper
+│   │   ├── grasp_generator.py    # Generate grasps
+│   │   ├── initial_set.py     		# Initial settings
+│   │   └── motion_planning.py    # Plan the path
+│   │   └── transform.py 					# Coordinate Transform 
+│   │   └── record_data.py 				# Collect data for training
+│ 	└── ...
+│ 
+├── controller/          # yaml file
+│				├── ur10e_description.yaml
+│			  └── rrt_config.yaml
+├── urdf/          			# urdf file
+│			└── ur10e_gripper.urdf
+├── usd/
+└── ...
+```
+
 
 
 ## Set up 
@@ -37,50 +113,59 @@ https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/pip_installa
 
 
 
-### Set ".bashrc": add the python path written in 'setup_python_env.sh'
+### (Optional) Set ".bashrc": 
 
-for example:
+Add codes in `./referencec_settings/add_settings.sh` into .bashrc. 
+
+
+
+### Build the environment: 
+
+Each package used in this project is listed. Reference to `./referencec_settings/reference_env.md`.
+
+#### Requirements
+- Python
+- PyTorch
+- Open3d
+- NumPy
+- SciPy
+- Pillow
+- MinkowskiEngine
+
+#### Installation
+Get the code.
+```bash
+git clone https://github.com/rhett-chen/graspness_implementation.git
+cd graspnet-graspness
+```
+Install packages via Pip.
+```bash
+pip install -r requirements.txt
+```
+Compile and install pointnet2 operators (code adapted from [votenet](https://github.com/facebookresearch/votenet)).
+```bash
+cd pointnet2
+python setup.py install
+```
+Compile and install knn operator (code adapted from [pytorch_knn_cuda](https://github.com/chrischoy/pytorch_knn_cuda)).
+```bash
+cd knn
+python setup.py install
+```
+Install graspnetAPI for evaluation.
+```bash
+git clone https://github.com/graspnet/graspnetAPI.git
+cd graspnetAPI
+pip install .
+```
+For MinkowskiEngine, please refer https://github.com/NVIDIA/MinkowskiEngine
+
+
+
+### Run:
 
 ```sh
-## Isaac Python Path
-export ISAAC_SIM_PATH=/home/ani/.local/share/ov/pkg/isaac-sim-4.2.0
-export PYTHONPATH=$PYTHONPATH:$ISAAC_SIM_PATH/kit/python/lib/python3.10/site-packages:$ISAAC_SIM_PATH/python_packages:$ISAAC_SIM_PATH/exts/omni.isaac.kit:$ISAAC_SIM_PATH/kit/kernel/py:$ISAAC_SIM_PATH/kit/plugins/bindings-python:$ISAAC_SIM_PATH/exts/omni.isaac.lula/pip_prebundle:$ISAAC_SIM_PATH/exts/omni.exporter.urdf/pip_prebundle:$ISAAC_SIM_PATH/extscache/omni.kit.pip_archive-0.0.0+10a4b5c0.lx64.cp310/pip_prebundle:$ISAAC_SIM_PATH/exts/omni.isaac.core_archive/pip_prebundle:$ISAAC_SIM_PATH/exts/omni.isaac.ml_archive/pip_prebundle:$ISAAC_SIM_PATH/exts/omni.pip.compute/pip_prebundle:$ISAAC_SIM_PATH/exts/omni.pip.cloud/pip_prebundle
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ISAAC_SIM_PATH/kit:$ISAAC_SIM_PATH/kit/kernel/plugins:$ISAAC_SIM_PATH/kit/libs/iray:$ISAAC_SIM_PATH/kit/plugins:$ISAAC_SIM_PATH/kit/plugins/bindings-python:$ISAAC_SIM_PATH/kit/plugins/carb_gfx:$ISAAC_SIM_PATH/kit/plugins/rtx:$ISAAC_SIM_PATH/kit/plugins/gpu.foundation:$ISAAC_SIM_PATH/exts/omni.usd.schema.isaac/plugins/IsaacSensorSchema/lib:$ISAAC_SIM_PATH/exts/omni.usd.schema.isaac/plugins/RangeSensorSchema/lib:$ISAAC_SIM_PATH/exts/omni.isaac.lula/pip_prebundle:$ISAAC_SIM_PATH/exts/omni.exporter.urdf/pip_prebundle
-
-# Self Added Isaac python path
-export PYTHONPATH=$PYTHONPATH:$ISAAC_SIM_PATH/exts/omni.isaac.motion_generation
-
-# Isaac lab related
-export ISAACSIM_DIR="/home/ani/miniconda3/envs/anygrasp/bin/isaacsim"
-export ISAACLAB_DIR="/home/ani/IsaacLab"
-export EXP_PATH="/home/ani/.local/share/ov/pkg/isaac-sim-4.2.0/apps"
-export CARB_APP_PATH="/home/ani/.local/share/ov/pkg/isaac-sim-4.2.0/kit"
-export ISAAC_PATH="/home/ani/.local/share/ov/pkg/isaac-sim-4.2.0"
+cd ./scripts
+python main.py
 ```
-
-<!-- ### Set my_ur_ws
-
-```sh
-# install ros2 pkg
-sudo apt install ros-humble-ur-robot-driver
-sudo apt install ros-humble-moveit
-
-# in the environment
-pip install catkin_pkg
-
-# build my_ur_ws
-cd my_ur_ws
-colcon build
-source install/setup.bash
-
-# check if my_ur_driver can be found by rospack
-sudo apt install rospack-tools
-rospack find my_ur_driver
-
-# if not
-export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:~/balance/my_Isaac/my_ur_ws/install/my_ur_driver/share
-```
-
-### The directory license/ and log/ need to be changed according to the machine you use.  -->
-
 
