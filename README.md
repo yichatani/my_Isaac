@@ -73,11 +73,10 @@ my_Isaac/
 │   │   └── transform.py 					# Coordinate Transform 
 │   │   └── record_data.py 				# Collect data for training
 │ 	└── ...
-│ 
-├── controller/          # yaml file
-│				├── ur10e_description.yaml
-│			  └── rrt_config.yaml
-├── urdf/          			# urdf file
+├── controller/          					# yaml file
+│			├── ur10e_description.yaml
+│			└── rrt_config.yaml
+├── urdf/          								# urdf file
 │			└── ur10e_gripper.urdf
 ├── usd/
 └── ...
