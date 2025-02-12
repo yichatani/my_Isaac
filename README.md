@@ -66,18 +66,18 @@ A universal and modular grasp-related task simulation platform built in Isaac SI
 my_Isaac/
 ├── scripts/
 │   ├── modules/
-│   │   ├── control.py        		# Control the robot, camera and gripper
+│   │   ├── control.py            # Control the robot, camera and gripper
 │   │   ├── grasp_generator.py    # Generate grasps
-│   │   ├── initial_set.py     		# Initial settings
-│   │   └── motion_planning.py    # Plan the path
-│   │   └── transform.py 					# Coordinate Transform 
-│   │   └── record_data.py 				# Collect data for training
-│ 	└── ...
-├── controller/          					# yaml file
-│			├── ur10e_description.yaml
-│			└── rrt_config.yaml
-├── urdf/          								# urdf file
-│			└── ur10e_gripper.urdf
+│   │   ├── initial_set.py        # Initial settings
+│   │   ├── motion_planning.py    # Plan the path
+│   │   ├── transform.py          # Coordinate Transform 
+│   │   └── record_data.py        # Collect data for training
+│   └── ...
+├── controller/                   # yaml file
+│   ├── ur10e_description.yaml
+│   └── rrt_config.yaml
+├── urdf/                         # urdf file
+│   └── ur10e_gripper.urdf
 ├── usd/
 └── ...
 ```
