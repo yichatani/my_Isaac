@@ -3,32 +3,45 @@ import h5py
 import time
 import numpy as np
 from PIL import Image
+from omni.isaac.core.articulations import Articulation # type: ignore
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR + "/../..")
 
+robot_path = "/ur10e"
 
-def recording(robot):
+def recording():
+
+    robot = Articulation(prim_path=robot_path)
+    assert robot is not None, "Failed to initialize Articulation"
 
     with h5py.File(os.path.join(DATA_DIR + "/episode1.h5"), "w") as f:
+        f.create_dataset("index", shape=(0, 1), maxshape=(None, 1), dtype=np.int32, compression="gzip")
         f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
         f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
 
-    timestamp = 0
     with h5py.File(os.path.join(DATA_DIR + "/episode1.h5"), "a") as f:
-        timestamp_dataset = f["time_stamp"]
+        index_dataset = f["index"]
         agent_pos_dataset = f["agent_pos"]
         action_dataset = f["action"]
-    
+    index = 0
     while True:
+
+        index_dataset.resize((index_dataset.shape[0] + 1,1))
+        index_dataset[-1] = index
+
+        print("index:",index)
+
+        index += 1
 
         action = record_robot_7dofs(robot)
         action_dataset.resize((action_dataset.shape[0] + 1, 7))
         action_dataset[-1] = action
 
         agent_pos_dataset.resize((agent_pos_dataset.shape[0] + 1, 7))
-        agent_pos_dataset[-1] = action_dataset[-2]
 
-        timestamp += 1
+        if action_dataset[-2] is not None:
+            agent_pos_dataset[-1] = action_dataset[-2]
+
         time.sleep(0.01)
 
 def record_robot_7dofs(robot):

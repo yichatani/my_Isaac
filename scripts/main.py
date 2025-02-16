@@ -90,7 +90,7 @@ def main():
         robot_description_path=yaml_path,
         urdf_path=urdf_path
     )
-    print("KSolver get_all_frame_names:",LulaKSolver.get_all_frame_names())
+    # print("KSolver get_all_frame_names:",LulaKSolver.get_all_frame_names())
     AKSolver = ArticulationKinematicsSolver(robot,LulaKSolver,"tool0")
 
     ########################

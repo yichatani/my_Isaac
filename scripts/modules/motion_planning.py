@@ -14,11 +14,11 @@ def planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context):
     T_target = transform_terminator(any_data_dict)
     target_translation = T_target[:3,3]
     target_rotation = T_target[:3,:3]
-    print(f">>target_position>>:\n{target_translation}\n>>target_rotation>>\n:{target_rotation}")
+    # print(f">>target_position>>:\n{target_translation}\n>>target_rotation>>\n:{target_rotation}")
 
     target_translation_up10 = target_translation + np.array([0,0,0.1])
     target_rotation_up10 = target_rotation
-    print(f">>target_position_up10>>:\n{target_translation_up10}\n>>target_rotation_up10>>\n:{target_rotation_up10}")
+    # print(f">>target_position_up10>>:\n{target_translation_up10}\n>>target_rotation_up10>>\n:{target_rotation_up10}")
 
     target_orientation = rot_matrices_to_quats(target_rotation)
     target_orientation_up10 = rot_matrices_to_quats(target_rotation_up10)
@@ -32,8 +32,8 @@ def planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context):
     complete_joint_positions = control_robot(robot,complete_joint_positions[:6],target_joint_positions,simulation_context)
     # for _ in range(5):
     #     simulation_context.step(render = True)
-    end_position,end_rotation = AKSolver.compute_end_effector_pose()
-    print(f"==end_position==:\n{end_position}\n==end_rotation==\n:{end_rotation}")
+    # end_position,end_rotation = AKSolver.compute_end_effector_pose()
+    # print(f"==end_position==:\n{end_position}\n==end_rotation==\n:{end_rotation}")
     
     start_force_control_gripper(robot,simulation_context)
     for _ in range(40):
