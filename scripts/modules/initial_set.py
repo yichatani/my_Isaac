@@ -1,4 +1,5 @@
 import os
+import time
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,6 +40,8 @@ def initialize_robot(robot_path):
 def initialize_simulation_context():
     """Initialize and reset the simulation context."""
     simulation_context = SimulationContext()
+    while simulation_context.is_simulating():
+        time.sleep(0.1)
     simulation_context.initialize_physics()
 
     simulation_context.reset()
@@ -64,11 +67,11 @@ def initial_camera(camera_path,simulation_context):
     depth = camera.get_depth()
     color = camera.get_rgba()[:, :, :3]
 
-    print(f"RGB Data shape: {color.shape}")
-    print(f"Depth Data shape: {depth.shape}")
-    print("Depth min:", np.min(depth), "max:", np.max(depth))
+    # print(f"RGB Data shape: {color.shape}")
+    # print(f"Depth Data shape: {depth.shape}")
+    # print("Depth min:", np.min(depth), "max:", np.max(depth))
 
-    print("camera local pose:",camera.get_local_pose())
+    # print("camera local pose:",camera.get_local_pose())
 
     if color is None or depth is None:
         raise RuntimeError("Failed to retrieve RGB or Depth data.")

@@ -39,12 +39,12 @@ from modules.motion_planning import planning_grasp_path
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp_set.usd")
 mg_extension_path = get_extension_path_from_name("omni.isaac.motion_generation")
 kinematics_config_dir = os.path.join(mg_extension_path, "motion_policy_configs")
-print("kinematics_config_dir:",kinematics_config_dir)
+# print("kinematics_config_dir:",kinematics_config_dir)
 # urdf_path = kinematics_config_dir + "/universal_robots/ur10e/ur10e.urdf"
 urdf_path = os.path.join(ROOT_DIR, "../urdf/ur10e_gripper.urdf")
 yaml_path = kinematics_config_dir + "/universal_robots/ur10e/rmpflow/ur10e_robot_description.yaml"
 # yaml_path = os.path.join(ROOT_DIR, "../ur10e_description.yaml")
-rrt_config_path = os.path.join(ROOT_DIR, "../controller/rrt_config.yaml")
+# rrt_config_path = os.path.join(ROOT_DIR, "../controller/rrt_config.yaml")
 
 ### Prim path
 robot_path = "/ur10e"
@@ -99,7 +99,10 @@ def main():
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
 
     while True:
-        
+        # start recording thread
+        record_thread = threading.Thread(target=recording, args=(robot,simulation_context,))
+        record_thread.start()
+
         data_dict = initial_camera(camera_path,simulation_context)
         # save_camera_data(data_dict)
         any_data_dict = any_grasp(data_dict)
@@ -107,6 +110,8 @@ def main():
         
         planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context)
         
+        record_thread.join()
+
         # Clean
         torch.cuda.empty_cache()  # clean GPU
 
@@ -114,9 +119,6 @@ def main():
 
 if __name__ == "__main__":
     
-    record_thread = threading.Thread(target=recording, daemon=True)
-    record_thread.start()
-
     main()
 
     
