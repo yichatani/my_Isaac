@@ -49,7 +49,7 @@ def initialize_simulation_context():
 
 
 
-def initial_camera(camera_path,simulation_context):
+def initial_camera(camera_path):
     """Initialize Camera"""
     camera = Camera(
         prim_path=camera_path,
@@ -62,8 +62,20 @@ def initial_camera(camera_path,simulation_context):
     camera.add_distance_to_image_plane_to_frame()
     camera = set_camera_parameters(camera)
 
+
+def rgb_and_depth(camera_path,simulation_context):
+    
+    print("FFFFF")
+    
+    camera = Camera(prim_path=camera_path)
+
+    print("DDDDD")
+
     while camera.get_depth() is None:
         simulation_context.step(render = True)
+
+    print("EEEEE")
+    
     depth = camera.get_depth()
     color = camera.get_rgba()[:, :, :3]
 

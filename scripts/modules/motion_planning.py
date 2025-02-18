@@ -6,7 +6,7 @@ from modules.control import control_gripper,control_robot,finger_angle_to_width,
 from modules.transform import transform_terminator
 
 
-def planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context):
+def planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context,recording_event):
 
     setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
     putting_joint_positions = np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0])
@@ -27,29 +27,32 @@ def planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context):
     target_joint_positions = target_joint_states.joint_positions
     target_up10_joint_positions = target_up10_joint_states.joint_positions
     
-    complete_joint_positions = control_robot(robot,complete_joint_positions[:6],target_up10_joint_positions,simulation_context)
+    complete_joint_positions = control_robot(robot,complete_joint_positions[:6],target_up10_joint_positions,simulation_context,recording_event)
 
-    complete_joint_positions = control_robot(robot,complete_joint_positions[:6],target_joint_positions,simulation_context)
+    complete_joint_positions = control_robot(robot,complete_joint_positions[:6],target_joint_positions,simulation_context,recording_event)
     # for _ in range(5):
     #     simulation_context.step(render = True)
     # end_position,end_rotation = AKSolver.compute_end_effector_pose()
     # print(f"==end_position==:\n{end_position}\n==end_rotation==\n:{end_rotation}")
     
-    start_force_control_gripper(robot,simulation_context)
+    start_force_control_gripper(robot,simulation_context,recording_event)
     for _ in range(40):
         simulation_context.step(render = True)
+        recording_event.set()
 
-    complete_joint_positions = control_robot(robot,target_joint_positions,target_up10_joint_positions,simulation_context)
+    complete_joint_positions = control_robot(robot,target_joint_positions,target_up10_joint_positions,simulation_context,recording_event)
 
-    complete_joint_positions = control_robot(robot,target_up10_joint_positions,putting_joint_positions,simulation_context)
+    complete_joint_positions = control_robot(robot,target_up10_joint_positions,putting_joint_positions,simulation_context,recording_event)
     for _ in range(10):
         simulation_context.step(render = True)
+        recording_event.set()
     
-    stop_force_control_gripper(robot,simulation_context)
+    stop_force_control_gripper(robot,simulation_context,recording_event)
     complete_joint_positions = robot.get_joint_positions()
     finger_joint_width = finger_angle_to_width(complete_joint_positions[6])
-    complete_joint_positions = control_gripper(robot,finger_joint_width,0.14,complete_joint_positions,simulation_context)
+    complete_joint_positions = control_gripper(robot,finger_joint_width,0.14,complete_joint_positions,simulation_context,recording_event)
 
-    complete_joint_positions = control_robot(robot,putting_joint_positions,setting_joint_positions,simulation_context)
+    complete_joint_positions = control_robot(robot,putting_joint_positions,setting_joint_positions,simulation_context,recording_event)
     for _ in range(50):
         simulation_context.step(render = True)
+        recording_event.set()

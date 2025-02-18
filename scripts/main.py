@@ -27,7 +27,7 @@ from omni.isaac.core.utils.extensions import get_extension_path_from_name # type
 from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinematicsSolver
 from modules.grasp_generator import any_grasp
 from modules.control import control_gripper
-from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,find_robot
+from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,find_robot, rgb_and_depth
 from modules.record_data import recording
 from modules.motion_planning import planning_grasp_path
 # import omni
@@ -52,6 +52,8 @@ camera_path = "/ur10e/tool0/Camera"
 # tool0_path = "/ur10e/tool0"
 # baselink_path = "/ur10e/base_link"
 ###
+
+recording_event = threading.Event()
 
 def handle_signal(signum, frame):
     """Handle SIGINT for clean exit."""
@@ -84,6 +86,7 @@ def main():
     find_robot(robot_path)
     for _ in range(50):
         simulation_context.step(render=True)
+        recording_event.set()
     
     ############ Initial ArticulationKinematicsSolver
     LulaKSolver = LulaKinematicsSolver(
@@ -100,15 +103,16 @@ def main():
 
     while True:
         # start recording thread
-        record_thread = threading.Thread(target=recording, args=(robot,simulation_context,))
+        record_thread = threading.Thread(target=recording, args=(robot, simulation_context, recording_event,))
         record_thread.start()
 
-        data_dict = initial_camera(camera_path,simulation_context)
+        initial_camera(camera_path,simulation_context)
+        data_dict = rgb_and_depth(camera_path,simulation_context)
         # save_camera_data(data_dict)
         any_data_dict = any_grasp(data_dict)
-        complete_joint_positions = control_gripper(robot, 0.14,any_data_dict["width"],complete_joint_positions,simulation_context)
+        complete_joint_positions = control_gripper(robot, 0.14,any_data_dict["width"],complete_joint_positions,simulation_context,recording_event)
         
-        planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context)
+        planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context,recording_event)
         
         record_thread.join()
 
