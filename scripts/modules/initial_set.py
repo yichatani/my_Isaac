@@ -62,19 +62,15 @@ def initial_camera(camera_path):
     camera.add_distance_to_image_plane_to_frame()
     camera = set_camera_parameters(camera)
 
+    return camera
 
-def rgb_and_depth(camera_path,simulation_context):
+
+def rgb_and_depth(camera,simulation_context):
     
-    print("FFFFF")
-    
-    camera = Camera(prim_path=camera_path)
-
-    print("DDDDD")
-
     while camera.get_depth() is None:
         simulation_context.step(render = True)
 
-    print("EEEEE")
+    print("BBBBB")
     
     depth = camera.get_depth()
     color = camera.get_rgba()[:, :, :3]
@@ -140,60 +136,3 @@ def save_camera_data(data_dict, output_dir="./output_data"):
     np.save(os.path.join(output_dir, "depth_data.npy"), depth_data)
     print(f"Depth data saved to {os.path.join(output_dir, 'depth_data.npy')}")
 
-
-"""
-
-    Deprecated below.
-
-"""
-def initial_camera__(camera_path):
-    """Deprecated"""
-    rep.new_layer()
-    camera = rep.get.prim_at_path(camera_path)
-    if not camera:
-        raise RuntimeError(f"Camera not found at path: {camera_path}")
-    print(f"Using camera at path: {camera_path}")
-    # Turn off camera's physics
-    camera_prim = get_current_stage().GetPrimAtPath(camera_path)
-    physics_api = UsdPhysics.RigidBodyAPI.Apply(camera_prim)
-    physics_api.GetRigidBodyEnabledAttr().Set(False)
-
-    render_product = rep.create.render_product(camera_path, resolution=(1920, 1080))
-    # Render_product = rep.create.render_product(camera_path)
-    rgb_annotator = rep.AnnotatorRegistry.get_annotator("rgb")
-    depth_annotator = rep.AnnotatorRegistry.get_annotator("distance_to_image_plane")
-    rgb_annotator.attach([render_product])
-    depth_annotator.attach([render_product])
-
-    return rgb_annotator,depth_annotator
-
-def set_camera_parameters__(camera):
-    # OpenCV camera matrix and width and height of the camera sensor, from the calibration file
-    width, height = 1920, 1080
-    # camera_matrix = [[1662.77, 0.0, 970.94], [0.0, 1281.77, 600.37], [0.0, 0.0, 1.0]]
-    camera_matrix = [[958.8, 0.0, 957.8], [0.0, 956.7, 589.5], [0.0, 0.0, 1.0]]
-
-    # Pixel size in microns, aperture and focus distance from the camera sensor specification
-    # Note: to disable the depth of field effect, set the f_stop to 0.0. This is useful for debugging.
-    pixel_size = 3 * 1e-3   # in mm, 3 microns is a common pixel size for high resolution cameras
-    f_stop = 1.8            # f-number, the ratio of the lens focal length to the diameter of the entrance pupil
-    focus_distance = 0.6    # in meters, the distance from the camera to the object plane
-
-    # Calculate the focal length and aperture size from the camera matrix
-    ((fx,_,cx),(_,fy,cy),(_,_,_)) = camera_matrix
-    horizontal_aperture =  pixel_size * width                   # The aperture size in mm
-    vertical_aperture =  pixel_size * height
-    focal_length_x  = fx * pixel_size
-    focal_length_y  = fy * pixel_size
-    focal_length = (focal_length_x + focal_length_y) / 2         # The focal length in mm
-
-    # Set the camera parameters, note the unit conversion between Isaac Sim sensor and Kit
-    camera.set_focal_length(focal_length / 10.0)                # Convert from mm to cm (or 1/10th of a world unit)
-    camera.set_focus_distance(focus_distance)                   # The focus distance in meters
-    camera.set_lens_aperture(f_stop * 100.0)                    # Convert the f-stop to Isaac Sim units
-    camera.set_horizontal_aperture(horizontal_aperture / 10.0)  # Convert from mm to cm (or 1/10th of a world unit)
-    camera.set_vertical_aperture(vertical_aperture / 10.0)
-
-    camera.set_clipping_range(0.05, 1.0e5)
-
-    return camera

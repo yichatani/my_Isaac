@@ -54,6 +54,7 @@ camera_path = "/ur10e/tool0/Camera"
 ###
 
 recording_event = threading.Event()
+stop_event = threading.Event()
 
 def handle_signal(signum, frame):
     """Handle SIGINT for clean exit."""
@@ -86,7 +87,9 @@ def main():
     find_robot(robot_path)
     for _ in range(50):
         simulation_context.step(render=True)
-        recording_event.set()
+        # recording_event.set()
+        # if not recording_event.is_set():
+        #     recording_event.set()
     
     ############ Initial ArticulationKinematicsSolver
     LulaKSolver = LulaKinematicsSolver(
@@ -102,19 +105,23 @@ def main():
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
 
     while True:
-        # start recording thread
-        record_thread = threading.Thread(target=recording, args=(robot, simulation_context, recording_event,))
+
+        camera = initial_camera(camera_path)
+        # get rgb and depth data for processing
+        data_dict = rgb_and_depth(camera,simulation_context)
+
+        record_thread = threading.Thread(target=recording, args=(robot, camera, simulation_context, recording_event, stop_event,))
         record_thread.start()
 
-        initial_camera(camera_path,simulation_context)
-        data_dict = rgb_and_depth(camera_path,simulation_context)
         # save_camera_data(data_dict)
         any_data_dict = any_grasp(data_dict)
         complete_joint_positions = control_gripper(robot, 0.14,any_data_dict["width"],complete_joint_positions,simulation_context,recording_event)
         
         planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context,recording_event)
         
+        stop_event.set()
         record_thread.join()
+        print("Main thread: Recording thread stopped.")
 
         # Clean
         torch.cuda.empty_cache()  # clean GPU

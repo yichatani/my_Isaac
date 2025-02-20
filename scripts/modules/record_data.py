@@ -4,6 +4,7 @@ import time
 import open3d as o3d
 import numpy as np
 from PIL import Image
+from omni.isaac.sensor import Camera # type: ignore
 from modules.initial_set import initial_camera,rgb_and_depth
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,7 +23,7 @@ camera_paths = {
 cam = "in_hand"
 # initial_camera(camera_paths["in_hand"])
 
-def recording(robot, simulation_context, recording_event):
+def recording(robot, camera, simulation_context, recording_event, stop_event):
     assert robot is not None, "Failed to initialize Articulation"
 
     num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
@@ -54,10 +55,11 @@ def recording(robot, simulation_context, recording_event):
 
         index = index_dataset.shape[0]  # Start from last saved index
 
-        while True:
+        while not stop_event.is_set():
 
-            recording_event.wait() # wait signal from main thread
-            recording_event.clear() # prevent from repeating
+            if not recording_event.wait(timeout=1):  # Wait with a timeout to check stop_event
+                continue  # If timeout occurs, check `stop_event` again
+            print("Recording triggered by simulation step.")
 
             print(f"Before resize: {index_dataset.shape}")
             index_dataset.resize((index_dataset.shape[0] + 1, 1))
@@ -89,13 +91,17 @@ def recording(robot, simulation_context, recording_event):
             print("AAAAA")
 
             ##
-            data_dict = rgb_and_depth(camera_paths["in_hand"], simulation_context)
+            # camera = Camera(prim_path=camera_paths["in_hand"])
 
-            print("BBBBB")
+            print("#####")
+
+            data_dict = rgb_and_depth(camera, simulation_context)
+
+            print("CCCCC")
 
             point_cloud, point_colors = create_point_cloud(data_dict)
 
-            print("CCCCC")
+            print("DDDDD")
 
             # Save data
             f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 1080, 1920, 3))
@@ -114,7 +120,10 @@ def recording(robot, simulation_context, recording_event):
             ##
 
             f.flush()  # Ensure data is saved
-            time.sleep(0.01)
+            print("Recording done. ")
+            recording_event.clear()
+            # time.sleep(0.01)
+            
 
 def record_robot_7dofs(robot):
     """
