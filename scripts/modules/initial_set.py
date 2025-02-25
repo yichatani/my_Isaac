@@ -49,12 +49,12 @@ def initialize_simulation_context():
 
 
 
-def initial_camera(camera_path):
+def initial_camera(camera_path,frequency,resolution):
     """Initialize Camera"""
     camera = Camera(
         prim_path=camera_path,
-        frequency=60,
-        resolution=(1920, 1080),
+        frequency=frequency,
+        resolution=resolution,
     )
 
     camera.initialize()
@@ -69,8 +69,6 @@ def rgb_and_depth(camera,simulation_context):
     
     while camera.get_depth() is None:
         simulation_context.step(render = True)
-
-    print("BBBBB")
     
     depth = camera.get_depth()
     color = camera.get_rgba()[:, :, :3]

@@ -24,7 +24,7 @@ def read_values(path, key):
 
 if __name__ == "__main__":
 
-    path = ROOT_DIR + "/episode_2.h5"
+    path = ROOT_DIR + "/episode_0.h5"
     read_structure(path)
     print("======")
     read_values(path, "in_hand/rgb")

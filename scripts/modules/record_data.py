@@ -23,7 +23,7 @@ camera_paths = {
 cam = "in_hand"
 # initial_camera(camera_paths["in_hand"])
 
-def recording(robot, camera, simulation_context, recording_event, stop_event):
+def recording(robot, cameras, simulation_context, recording_event, stop_event):
     assert robot is not None, "Failed to initialize Articulation"
 
     num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
@@ -39,9 +39,9 @@ def recording(robot, camera, simulation_context, recording_event, stop_event):
             # for cam in camera_paths.keys():
 
             # Both the rgb and depth should be normalized before training
-            f.create_dataset(f"{cam}/rgb", shape=(1, 1080, 1920, 3), maxshape=(None, 1080, 1920, 3),
+            f.create_dataset(f"{cam}/rgb", shape=(1, 480, 640, 3), maxshape=(None, 480, 640, 3),
                                  dtype=np.float32, compression="gzip")
-            f.create_dataset(f"{cam}/depth", shape=(1, 1080, 1920), maxshape=(None, 1080, 1920),
+            f.create_dataset(f"{cam}/depth", shape=(1, 480, 640), maxshape=(None, 480, 640), # last stop here
                                  dtype=np.float32, compression="gzip")
             f.create_dataset(f"{cam}/point_cloud", shape=(1, 100000, 3), maxshape=(None, 100000, 3),
                                  dtype=np.float32, compression="gzip")
@@ -88,20 +88,10 @@ def recording(robot, camera, simulation_context, recording_event, stop_event):
             else:
                 print("Skipping agent_pos update: Not enough data yet")
 
-            print("AAAAA")
 
-            ##
-            # camera = Camera(prim_path=camera_paths["in_hand"])
-
-            print("#####")
-
-            data_dict = rgb_and_depth(camera, simulation_context)
-
-            print("CCCCC")
+            data_dict = rgb_and_depth(cameras["in_hand"], simulation_context)
 
             point_cloud, point_colors = create_point_cloud(data_dict)
-
-            print("DDDDD")
 
             # Save data
             f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 1080, 1920, 3))

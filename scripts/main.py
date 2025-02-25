@@ -53,6 +53,13 @@ camera_path = "/ur10e/tool0/Camera"
 # baselink_path = "/ur10e/base_link"
 ###
 
+camera_paths = {
+    "sensor": "/ur10e/tool0/Camera",
+    "in_hand": "/ur10e/tool0/in_hand",
+    "up": "/World/up",
+    "front": "/World/front"
+}
+
 recording_event = threading.Event()
 stop_event = threading.Event()
 
@@ -105,14 +112,24 @@ def main():
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
 
     while True:
+        global camera_paths
+        sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
+        in_hand_cam = initial_camera(camera_paths["in_hand"],60,(640,480))
+        up_cam = initial_camera(camera_paths["up"],60,(640,480))
+        front_cam = initial_camera(camera_paths["front"],60,(640,480))
 
-        camera = initial_camera(camera_path)
-        # get rgb and depth data for processing
-        data_dict = rgb_and_depth(camera,simulation_context)
+        record_camera_dict = {
+            "in_hand": in_hand_cam,
+            "up": up_cam,
+            "front": front_cam
+        }
 
-        record_thread = threading.Thread(target=recording, args=(robot, camera, simulation_context, recording_event, stop_event,))
+        record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
         record_thread.start()
 
+        # get rgb and depth data for processing
+        data_dict = rgb_and_depth(sensor,simulation_context)
+        
         # save_camera_data(data_dict)
         any_data_dict = any_grasp(data_dict)
         complete_joint_positions = control_gripper(robot, 0.14,any_data_dict["width"],complete_joint_positions,simulation_context,recording_event)
