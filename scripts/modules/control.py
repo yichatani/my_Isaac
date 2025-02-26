@@ -92,7 +92,7 @@ def start_force_control_gripper(robot, simulation_context,recording_event):
     gripper_dof_index = robot.dof_names.index(gripper_dof_name)
     stage = get_current_stage()
 
-    print("robot_dof_names:",robot.dof_names)
+    # print("robot_dof_names:",robot.dof_names)
     # exit()
 
     set_joint_stiffness_damping(stage, gripper_dof_path, stiffness=0.0, damping=0.0)

@@ -30,29 +30,16 @@ from modules.control import control_gripper
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,find_robot, rgb_and_depth
 from modules.record_data import recording
 from modules.motion_planning import planning_grasp_path
-# import omni
-# omni.timeline.get_timeline_interface().play()
-# print("Every thing ok!")
-# exit()
 
 ### Paths
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp_set.usd")
 mg_extension_path = get_extension_path_from_name("omni.isaac.motion_generation")
 kinematics_config_dir = os.path.join(mg_extension_path, "motion_policy_configs")
-# print("kinematics_config_dir:",kinematics_config_dir)
-# urdf_path = kinematics_config_dir + "/universal_robots/ur10e/ur10e.urdf"
 urdf_path = os.path.join(ROOT_DIR, "../urdf/ur10e_gripper.urdf")
 yaml_path = kinematics_config_dir + "/universal_robots/ur10e/rmpflow/ur10e_robot_description.yaml"
-# yaml_path = os.path.join(ROOT_DIR, "../ur10e_description.yaml")
-# rrt_config_path = os.path.join(ROOT_DIR, "../controller/rrt_config.yaml")
 
 ### Prim path
 robot_path = "/ur10e"
-camera_path = "/ur10e/tool0/Camera"
-# tool0_path = "/ur10e/tool0"
-# baselink_path = "/ur10e/base_link"
-###
-
 camera_paths = {
     "sensor": "/ur10e/tool0/Camera",
     "in_hand": "/ur10e/tool0/in_hand",
@@ -76,10 +63,8 @@ def handle_signal(signum, frame):
 ############ main
 def main():
     
-    ##############
     # Initialize #
-    ##############
-    ############ Open the stage
+    # Open the stage
     open_stage(usd_path=usd_file_path)
     # Initialize the world and simulation context
     simulation_context = initialize_simulation_context()
@@ -88,15 +73,11 @@ def main():
     robot = initialize_robot(robot_path)
     complete_joint_positions = robot.get_joint_positions()
     setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
-    putting_joint_positions = np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0])
     complete_joint_positions[:6] = setting_joint_positions
     robot.set_joint_positions(complete_joint_positions)
     find_robot(robot_path)
     for _ in range(50):
         simulation_context.step(render=True)
-        # recording_event.set()
-        # if not recording_event.is_set():
-        #     recording_event.set()
     
     ############ Initial ArticulationKinematicsSolver
     LulaKSolver = LulaKinematicsSolver(
@@ -106,30 +87,28 @@ def main():
     # print("KSolver get_all_frame_names:",LulaKSolver.get_all_frame_names())
     AKSolver = ArticulationKinematicsSolver(robot,LulaKSolver,"tool0")
 
-    ########################
+    global camera_paths
+    sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
+    in_hand_cam = initial_camera(camera_paths["in_hand"],60,(640,480))
+    up_cam = initial_camera(camera_paths["up"],60,(640,480))
+    front_cam = initial_camera(camera_paths["front"],60,(640,480))
+    record_camera_dict = {
+        "in_hand": in_hand_cam,
+        "up": up_cam,
+        "front": front_cam
+    }
+
     # Main simulation loop #
-    ########################
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
-
     while True:
-        global camera_paths
-        sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
-        in_hand_cam = initial_camera(camera_paths["in_hand"],60,(640,480))
-        up_cam = initial_camera(camera_paths["up"],60,(640,480))
-        front_cam = initial_camera(camera_paths["front"],60,(640,480))
-
-        record_camera_dict = {
-            "in_hand": in_hand_cam,
-            "up": up_cam,
-            "front": front_cam
-        }
-
+        
+        stop_event.clear()
         record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
         record_thread.start()
 
         # get rgb and depth data for processing
         data_dict = rgb_and_depth(sensor,simulation_context)
-        
+
         # save_camera_data(data_dict)
         any_data_dict = any_grasp(data_dict)
         complete_joint_positions = control_gripper(robot, 0.14,any_data_dict["width"],complete_joint_positions,simulation_context,recording_event)

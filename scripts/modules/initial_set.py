@@ -27,13 +27,13 @@ def initialize_robot(robot_path):
 
     # launch self_collision
     robot.set_enabled_self_collisions(True)
-    print(f"Self-collision enabled: {robot.get_enabled_self_collisions()}")
+    # print(f"Self-collision enabled: {robot.get_enabled_self_collisions()}")
     
     robot.set_solver_position_iteration_count(64)
     robot.set_solver_velocity_iteration_count(64)
-    print("Available DOF Names:", robot.dof_names)
+    # print("Available DOF Names:", robot.dof_names)
 
-    print(f"Initial joint positions: {robot.get_joint_positions()}")
+    # print(f"Initial joint positions: {robot.get_joint_positions()}")
 
     return robot
 
