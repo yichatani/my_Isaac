@@ -62,6 +62,9 @@ def recording(robot, cameras, simulation_context, recording_event, stop_event):
                 continue  # If timeout occurs, check `stop_event` again
             print("Recording triggered by simulation step.")
 
+            # Pause Simulation
+            simulation_context.stop()
+
             print(f"Before resize: {index_dataset.shape}")
             index_dataset.resize((index_dataset.shape[0] + 1, 1))
             index_dataset[-1] = index
@@ -119,6 +122,8 @@ def recording(robot, cameras, simulation_context, recording_event, stop_event):
 
             f.flush()  # Ensure data is saved
             print("Recording done. ")
+            # Restart simulation
+            simulation_context.start()
             recording_event.clear()
             # time.sleep(0.01)
             
