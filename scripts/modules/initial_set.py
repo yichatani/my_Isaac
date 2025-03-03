@@ -108,7 +108,7 @@ def set_camera_parameters(camera):
     return camera
 
     
-def save_camera_data(data_dict, output_dir="./output_data"):
+def save_camera_data(camera_key,data_dict, output_dir="./output_data"):
     """
     Save RGB and Depth data to files.
     
@@ -120,17 +120,17 @@ def save_camera_data(data_dict, output_dir="./output_data"):
     
     # Save RGB image
     rgb_image = Image.fromarray(data_dict["rgb"])
-    rgb_image.save(os.path.join(output_dir, "rgb_image.png"))
-    print(f"RGB image saved to {os.path.join(output_dir, 'rgb_image.png')}")
+    rgb_image.save(os.path.join(output_dir, f"{camera_key}_rgb_image.png"))
+    print(f"RGB image saved to {os.path.join(output_dir, f'{camera_key}_rgb_image.png')}")
     
     # Save Depth data as normalized grayscale image
     depth_data = data_dict["depth"]
     depth_normalized = ((depth_data - np.min(depth_data)) / np.ptp(depth_data) * 255).astype(np.uint8)
     depth_image = Image.fromarray(depth_normalized)
-    depth_image.save(os.path.join(output_dir, "depth_image.png"))
-    print(f"Depth image saved to {os.path.join(output_dir, 'depth_image.png')}")
+    depth_image.save(os.path.join(output_dir, f"{camera_key}_depth_image.png"))
+    print(f"Depth image saved to {os.path.join(output_dir, f'{camera_key}_depth_image.png')}")
     
     # Save Depth data as NumPy file
-    np.save(os.path.join(output_dir, "depth_data.npy"), depth_data)
-    print(f"Depth data saved to {os.path.join(output_dir, 'depth_data.npy')}")
+    np.save(os.path.join(output_dir, f"{camera_key}_depth_data.npy"), depth_data)
+    print(f"Depth data saved to {os.path.join(output_dir, f'{camera_key}_depth_data.npy')}")
 

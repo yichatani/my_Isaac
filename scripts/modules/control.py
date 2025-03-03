@@ -25,7 +25,7 @@ def width_to_finger_angle(width):
         raise ValueError(f"Width {width} out of range [0, {max_width}]")
 
     # Convert width to finger joint angle
-    finger_angle = (max_width - width) / scale
+    finger_angle = (max_width - width) / scale # when width == max_width, finger_angle = 0
     return finger_angle
 
 def finger_angle_to_width(finger_angle):
@@ -61,7 +61,6 @@ def control_gripper(robot, finger_start, finger_target,   # finger_start is widt
         # complete_joint_positions[10:12] = [position] * 2  # left_inner_finger_joint, right_inner_finger_joint
         # robot.set_joint_positions(complete_joint_positions)
         simulation_context.step(render=True)
-        # recording_event.set()
         if not recording_event.is_set():
             recording_event.set()
     return complete_joint_positions
@@ -96,18 +95,17 @@ def start_force_control_gripper(robot, simulation_context,recording_event):
     # exit()
 
     set_joint_stiffness_damping(stage, gripper_dof_path, stiffness=0.0, damping=0.0)
-    simulation_context.step(render=True)
-    # recording_event.set()
-    if not recording_event.is_set():
-        recording_event.set()
+    # simulation_context.step(render=True)
+    # if not recording_event.is_set():
+    #     recording_event.set()
 
     torques = robot.get_applied_joint_efforts()
-    torques[gripper_dof_index] = 4     # max torque
+    torques[gripper_dof_index] = 2     # max torque
     robot.set_joint_efforts(torques)
-    simulation_context.step(render=True)
-    # recording_event.set()
-    if not recording_event.is_set():
-        recording_event.set()
+    # simulation_context.step(render=True)
+    # # recording_event.set()
+    # if not recording_event.is_set():
+    #     recording_event.set()
 
 def stop_force_control_gripper(robot,simulation_context,recording_event):
     gripper_dof_name = "finger_joint"
@@ -129,18 +127,18 @@ def stop_force_control_gripper(robot,simulation_context,recording_event):
     torques = robot.get_applied_joint_efforts()
     torques[gripper_dof_index] = 0.0
     robot.set_joint_efforts(torques)
-    simulation_context.step(render=True)
-    # recording_event.set()
-    if not recording_event.is_set():
-        recording_event.set()
+    # simulation_context.step(render=True)
+    # # recording_event.set()
+    # if not recording_event.is_set():
+    #     recording_event.set()
 
     print("Gripper reset!")
 
 
 
-def control_robot(robot, start_position, target_position, simulation_context,recording_event):
+def control_robot(robot, start_position, target_position, simulation_context,recording_event,if_record=False, steps=50):
     """To control the robot by joint positions"""
-    trajectory = interpolate_joint_positions(start_position, target_position, steps=50)
+    trajectory = interpolate_joint_positions(start_position, target_position, steps)
     for joint_positions in trajectory:
         complete_joint_positions = robot.get_joint_positions()
         complete_joint_positions[:6] = joint_positions
@@ -149,8 +147,9 @@ def control_robot(robot, start_position, target_position, simulation_context,rec
         robot.apply_action(action)
         simulation_context.step(render=True)
         # recording_event.set()
-        if not recording_event.is_set():
-            recording_event.set()
+        if if_record:
+            if not recording_event.is_set():
+                recording_event.set()
     return complete_joint_positions
 
 

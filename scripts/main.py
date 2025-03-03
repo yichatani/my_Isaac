@@ -89,9 +89,9 @@ def main():
 
     global camera_paths
     sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
-    in_hand_cam = initial_camera(camera_paths["in_hand"],60,(640,480))
-    up_cam = initial_camera(camera_paths["up"],60,(640,480))
-    front_cam = initial_camera(camera_paths["front"],60,(640,480))
+    in_hand_cam = initial_camera(camera_paths["in_hand"],60,(512,512))
+    up_cam = initial_camera(camera_paths["up"],60,(512,512))
+    front_cam = initial_camera(camera_paths["front"],60,(512,512))
     record_camera_dict = {
         "in_hand": in_hand_cam,
         "up": up_cam,
@@ -113,11 +113,11 @@ def main():
         any_data_dict = any_grasp(data_dict)
         complete_joint_positions = control_gripper(robot, 0.14,any_data_dict["width"],complete_joint_positions,simulation_context,recording_event)
         
-        planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context,recording_event)
+        planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context,recording_event,record_thread,stop_event)
         
-        stop_event.set()
-        record_thread.join()
-        print("Main thread: Recording thread stopped.")
+        # stop_event.set()
+        # record_thread.join()
+        # print("Recording thread stopped.")
 
         # Clean
         torch.cuda.empty_cache()  # clean GPU

@@ -35,13 +35,14 @@ def recording(robot, cameras, simulation_context, recording_event, stop_event):
             f.create_dataset("index", shape=(1, 1), maxshape=(None, 1), dtype=np.int32, compression="gzip")
             f.create_dataset("agent_pos", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
             f.create_dataset("action", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
+            f.create_dataset("label",shape=(1, 1), maxshape=(None, 1), dtype=np.int32, compression="gzip")
             
             for cam in cameras.keys():
 
                 # Both the rgb and depth should be normalized before training
-                f.create_dataset(f"{cam}/rgb", shape=(1, 480, 640, 3), maxshape=(None, 480, 640, 3),    
+                f.create_dataset(f"{cam}/rgb", shape=(1, 512, 512, 3), maxshape=(None, 512, 512, 3),    
                                     dtype=np.float32, compression="gzip")
-                f.create_dataset(f"{cam}/depth", shape=(1, 480, 640), maxshape=(None, 480, 640), # last stop here
+                f.create_dataset(f"{cam}/depth", shape=(1, 512, 512), maxshape=(None, 512, 512), # last stop here
                                     dtype=np.float32, compression="gzip")
                 # f.create_dataset(f"{cam}/point_cloud", shape=(1, 0, 3), maxshape=(None, None, 3),
                 #                     dtype=np.float32, compression="gzip")
@@ -97,11 +98,13 @@ def recording(robot, cameras, simulation_context, recording_event, stop_event):
                 # point_cloud, point_colors = create_point_cloud(data_dict)
 
                 # Save data
-                f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 480, 640, 3))
+                f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 512, 512, 3))
                 f[f"{cam}/rgb"][-1] = data_dict["rgb"]
 
-                f[f"{cam}/depth"].resize((f[f"{cam}/depth"].shape[0] + 1, 480, 640))
+                f[f"{cam}/depth"].resize((f[f"{cam}/depth"].shape[0] + 1, 512, 512))
                 f[f"{cam}/depth"][-1] = data_dict["depth"]
+
+                # save_camera_data(cam,data_dict,output_dir=os.path.join(ROOT_DIR + "/../../output_dir"))
 
                 # if len(point_cloud) > 0:
                 #     num_points = point_cloud.shape[0]   # pointcloud number
@@ -112,6 +115,7 @@ def recording(robot, cameras, simulation_context, recording_event, stop_event):
                 #     f[f"{cam}/colors"][-1] = point_colors  # Ensure same size as point cloud
 
                 ##
+            
 
             f.flush()  # Ensure data is saved
             print("Recording done. ")

@@ -12,15 +12,18 @@ from modules.transform import create_rotation_matrix
 
 ############ AnyGrasp Parts
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint_path', default=os.path.join(ROOT_DIR, "../log/checkpoint_detection.tar"), help='Model checkpoint path')
+# parser.add_argument('--checkpoint_path', default=os.path.join(ROOT_DIR, "../log/checkpoint_detection.tar"), help='Model checkpoint path')
 #parser.add_argument('--checkpoint_path', default=os.path.join(ROOT_DIR, "../log/mega.tar"), help='Model checkpoint path')
 parser.add_argument('--max_gripper_width', type=float, default=0.14, help='Maximum gripper width (<=0.1m)')
-parser.add_argument('--gripper_height', type=float, default=0.035, help='Gripper height')
-parser.add_argument('--top_down_grasp', action='store_true', help='Output top-down grasps.')
-parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+# parser.add_argument('--gripper_height', type=float, default=0.035, help='Gripper height')
+# parser.add_argument('--top_down_grasp', action='store_true', help='Output top-down grasps.')
+# parser.add_argument('--debug', action='store_true', help='Enable debug mode')
 cfgs = parser.parse_args()
+cfgs.checkpoint_path = os.path.join(ROOT_DIR, "../log/checkpoint_detection.tar")
+cfgs.gripper_height = 0.035
 cfgs.max_gripper_width = max(0, min(0.14, cfgs.max_gripper_width))
 cfgs.top_down_grasp = True
+cfgs.debug = True
 anygrasp = AnyGrasp(cfgs)
 anygrasp.load_net()
 ############
@@ -106,7 +109,8 @@ def vis_grasps(gg,cloud):
     # sphere.translate(gg[0].translation)
     # sphere.paint_uniform_color([1,0,0])
     # o3d.visualization.draw_geometries([grippers[0], cloud, sphere])
-    o3d.visualization.draw_geometries([grippers[0], cloud])
+    # o3d.visualization.draw_geometries([grippers[0], cloud])
+    o3d.visualization.draw_geometries([*grippers, cloud])
     
 
 def remove_distortion(camera_matrix,dist_coeffs,colors,depths):
@@ -133,8 +137,12 @@ def any_grasp(data_dict):
     scale = 1.0
 
     # set workspace to filter output grasps
-    xmin, xmax = -0.29, 0.29
-    ymin, ymax = -0.29, 0.29
+    # xmin, xmax = -0.29, 0.29
+    # ymin, ymax = -0.29, 0.29
+    # zmin, zmax = 0.0, 1.0
+
+    xmin, xmax = -0.5, 0.5
+    ymin, ymax = -0.5, 0.5
     zmin, zmax = 0.0, 1.0
     lims = [xmin, xmax, ymin, ymax, zmin, zmax]
 
@@ -164,7 +172,7 @@ def any_grasp(data_dict):
         print('No Grasp detected after collision detection!')
 
     gg = gg.nms().sort_by_score()
-    gg = gg[0:20]
+    gg = gg[0:40]
     # vis_grasps(gg,cloud)
     # exit()
 
