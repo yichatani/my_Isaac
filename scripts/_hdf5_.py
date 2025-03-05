@@ -24,11 +24,13 @@ def read_values(path, key):
 
 if __name__ == "__main__":
 
-    path = ROOT_DIR + "/episode_4.h5"
+    path = ROOT_DIR + "/episode_13.h5"
     read_structure(path)
     # print("======")
     # read_values(path, "up/rgb")
     # print("======")
     # read_values(path, "up/depth")
+    # print("======")
+    # read_values(path, "label")
     print("======")
-    read_values(path, "label")
+    read_values(path, "index")

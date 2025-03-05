@@ -1,8 +1,12 @@
 import os
 import time
+import omni.usd # type: ignore
 from PIL import Image
 import numpy as np
+import random
 import matplotlib.pyplot as plt
+from pxr import Usd, UsdGeom # type: ignore
+from omni.isaac.core.prims import XFormPrim # type: ignore
 from omni.isaac.core.articulations import Articulation # type: ignore
 from omni.isaac.core.utils.prims import is_prim_path_valid # type: ignore
 from omni.isaac.core.simulation_context import SimulationContext # type: ignore
@@ -10,6 +14,28 @@ import omni.replicator.core as rep # type: ignore
 from omni.isaac.core.utils.stage import get_current_stage # type: ignore
 from pxr import UsdPhysics # type: ignore
 from omni.isaac.sensor import Camera # type: ignore
+
+
+# Function to list all prims in the stage
+def get_all_prim_paths(stage):
+    stage = omni.usd.get_context().get_stage()
+    prim_paths = []
+    for prim in stage.Traverse():
+        prim_paths.append(prim.GetPath().pathString)  # Get prim path as string
+
+    for path in prim_paths:
+        print(path)
+
+
+def reset_obj_position(prim_paths):
+    for prim_path in prim_paths:
+        obj = XFormPrim(prim_path)
+        obj.set_world_pose(position=[
+            random.uniform(0.33, 1.10), 
+            random.uniform(-0.18,0.60), 
+            random.uniform(0.65,1)])
+    print("Reset the objects' positions!")
+
 
 def find_robot(robot_path):
     """Check if the robot exists in the scene."""
@@ -35,7 +61,18 @@ def initialize_robot(robot_path):
 
     # print(f"Initial joint positions: {robot.get_joint_positions()}")
 
+    complete_joint_positions = robot.get_joint_positions()
+    setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+    complete_joint_positions[:6] = setting_joint_positions
+    robot.set_joint_positions(complete_joint_positions)
+
     return robot
+
+def robot_go_home(robot):
+    complete_joint_positions = robot.get_joint_positions()
+    setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+    complete_joint_positions[:6] = setting_joint_positions
+    robot.set_joint_positions(complete_joint_positions)
 
 def initialize_simulation_context():
     """Initialize and reset the simulation context."""

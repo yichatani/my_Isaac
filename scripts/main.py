@@ -24,11 +24,12 @@ import threading
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 from omni.isaac.core.utils.stage import open_stage # type: ignore
 from omni.isaac.core.utils.extensions import get_extension_path_from_name # type: ignore
+from omni.isaac.core import World # type: ignore
 from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinematicsSolver
 from modules.grasp_generator import any_grasp
-from modules.control import control_gripper
-from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,find_robot, rgb_and_depth
-from modules.record_data import recording
+from modules.control import control_gripper,finger_angle_to_width
+from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,robot_go_home, rgb_and_depth,reset_obj_position
+from modules.record_data import create_episede_file
 from modules.motion_planning import planning_grasp_path
 
 ### Paths
@@ -46,6 +47,15 @@ camera_paths = {
     "up": "/World/up",
     "front": "/World/front"
 }
+# test
+obj_prim_path = [
+    "/rubiks_cube",
+    "/Android_Figure_Panda",
+    "/SM_Mug_A2",
+    "/_05_tomato_soup_can",
+    "/_11_banana",
+    "/Office_Depot_Canon"
+]
 
 recording_event = threading.Event()
 stop_event = threading.Event()
@@ -65,21 +75,27 @@ def main():
     
     # Initialize #
     # Open the stage
-    open_stage(usd_path=usd_file_path)
+    stage = open_stage(usd_path=usd_file_path)
     # Initialize the world and simulation context
     simulation_context = initialize_simulation_context()
+    # world = World()
+    # get_all_prim_paths(stage)
 
-    ############ Initial robot
+    # print(dir(simulation_context))
+
+    # exit()
+    # world = World()
+    # reset_obj_position(obj_prim_path,world)
+
+
+    # Initial robot
     robot = initialize_robot(robot_path)
-    complete_joint_positions = robot.get_joint_positions()
-    setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
-    complete_joint_positions[:6] = setting_joint_positions
-    robot.set_joint_positions(complete_joint_positions)
-    find_robot(robot_path)
-    for _ in range(50):
+    robot_go_home(robot)
+    for _ in range(1):
         simulation_context.step(render=True)
+    # find_robot(robot_path)
     
-    ############ Initial ArticulationKinematicsSolver
+    # Initial ArticulationKinematicsSolver
     LulaKSolver = LulaKinematicsSolver(
         robot_description_path=yaml_path,
         urdf_path=urdf_path
@@ -100,27 +116,46 @@ def main():
 
     # Main simulation loop #
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
+    episode_count = 0
     while True:
-        
-        stop_event.clear()
-        record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
-        record_thread.start()
+        reset_obj_position(obj_prim_path)
+        for _ in range(50):
+            simulation_context.step(render=True)
+        for _ in range(10):
+            # stop_event.clear()
+            # record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
+            # record_thread.start()
 
-        # get rgb and depth data for processing
-        data_dict = rgb_and_depth(sensor,simulation_context)
+            episode_path = create_episede_file(record_camera_dict)
 
-        # save_camera_data(data_dict)
-        any_data_dict = any_grasp(data_dict)
-        complete_joint_positions = control_gripper(robot, 0.14,any_data_dict["width"],complete_joint_positions,simulation_context,recording_event)
-        
-        planning_grasp_path(robot,any_data_dict,AKSolver,simulation_context,recording_event,record_thread,stop_event)
-        
-        # stop_event.set()
-        # record_thread.join()
-        # print("Recording thread stopped.")
+            data_dict = rgb_and_depth(sensor,simulation_context)
 
-        # Clean
-        torch.cuda.empty_cache()  # clean GPU
+            # save_camera_data(data_dict)
+            any_data_dict = any_grasp(data_dict)
+            if any_data_dict is False:
+                # reset_obj_position(obj_prim_path)
+                # for _ in range(50):
+                #     simulation_context.step(render=True)
+                break
+            complete_joint_positions = robot.get_joint_positions()
+            complete_joint_positions = control_gripper(robot, record_camera_dict, finger_angle_to_width(complete_joint_positions[6]),any_data_dict["width"],
+                                                    complete_joint_positions,simulation_context,episode_path,is_record=True)
+            
+            planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path)
+            robot_go_home(robot)
+
+            if episode_count % 10 == 0:
+                torch.cuda.empty_cache()
+            
+            print(f"Completed {episode_count} episodes.")
+
+            episode_count += 1
+            # stop_event.set()
+            # record_thread.join()
+            # print("Recording thread stopped.")
+
+            # # Clean
+            # torch.cuda.empty_cache()  # clean GPU
 
     
 

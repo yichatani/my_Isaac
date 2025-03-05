@@ -1,29 +1,92 @@
 import os
 import h5py
 import time
-import open3d as o3d
+import queue
 import numpy as np
-from PIL import Image
-from omni.isaac.sensor import Camera # type: ignore
-from modules.initial_set import initial_camera,rgb_and_depth,save_camera_data
+from modules.initial_set import rgb_and_depth,save_camera_data
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR + "/../../episodes")
 
-robot_path = "/ur10e"
-camera_path = "/ur10e/tool0/Camera"
-camera_1_path = "/ur10e/tool0/Camera1"
-camera_2_path = "/ur10e/tool0/Camera2"
+command_queue = queue.Queue()
 
-camera_paths = {
-    "in_hand": "/ur10e/tool0/Camera",
-    "up": "/ur10e/tool0/Camera1",
-    "front": "/ur10e/tool0/Camera2"
-}
-cam = "in_hand"
-# initial_camera(camera_paths["in_hand"])
+def create_episede_file(cameras):
+    num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
+    episode_path = os.path.join(DATA_DIR, f"episode_{num_files}.h5")
+    print(f"Saving to: {episode_path}")
+    if not os.path.exists(episode_path):
+        with h5py.File(episode_path, "w") as f:
+            f.create_dataset("index", shape=(1, 1), maxshape=(None, 1), dtype=np.int32, compression="gzip")
+            f.create_dataset("agent_pos", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
+            f.create_dataset("action", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
+            f.create_dataset("label", shape=(1,), dtype=np.int32, compression="gzip")
+            
+            for cam in cameras.keys():
 
-def recording(robot, cameras, simulation_context, recording_event, stop_event):
+                # Both the rgb and depth should be normalized before training
+                f.create_dataset(f"{cam}/rgb", shape=(1, 512, 512, 3), maxshape=(None, 512, 512, 3),    
+                                    dtype=np.float32, compression="gzip")
+                f.create_dataset(f"{cam}/depth", shape=(1, 512, 512), maxshape=(None, 512, 512), # last stop here
+                                    dtype=np.float32, compression="gzip")
+    return episode_path
+
+def recording(robot, cameras, episode_path, simulation_context):
+
+    assert robot is not None, "Failed to initialize Articulation"
+    with h5py.File(episode_path, "a") as f:
+        index_dataset = f["index"]
+        agent_pos_dataset = f["agent_pos"]
+        action_dataset = f["action"]
+
+        index = index_dataset.shape[0]  # Start from last saved index
+
+        print("Recording triggered by simulation step.")
+
+        print(f"Before resize: {index_dataset.shape}")
+        index_dataset.resize((index_dataset.shape[0] + 1, 1))
+        index_dataset[-1] = index
+        print(f"After resize: {index_dataset.shape}")
+
+        index += 1
+        try:
+            action = record_robot_7dofs(robot)
+            if action is None or len(action) != 7:
+                raise ValueError("Invalid action data received")
+        except Exception as e:
+            print(f"Error retrieving robot state: {e}")
+            action = None
+
+        if action is not None:
+            action_dataset.resize((action_dataset.shape[0] + 1, 7))
+            action_dataset[-1] = action
+        else:
+            print("Skipping action dataset update: Received None or invalid action")
+
+        agent_pos_dataset.resize((agent_pos_dataset.shape[0] + 1, 7))
+
+        if action_dataset.shape[0] > 1:
+            agent_pos_dataset[-1] = action_dataset[-2]
+        else:
+            print("Skipping agent_pos update: Not enough data yet")
+
+        for cam in cameras.keys():
+
+            data_dict = rgb_and_depth(cameras[cam], simulation_context)
+
+            # Save data
+            f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 512, 512, 3))
+            f[f"{cam}/rgb"][-1] = data_dict["rgb"]
+
+            f[f"{cam}/depth"].resize((f[f"{cam}/depth"].shape[0] + 1, 512, 512))
+            f[f"{cam}/depth"][-1] = data_dict["depth"]
+        
+
+        f.flush()  # Ensure data is saved
+        print("Recording done. ")
+
+
+
+def recording_thread(robot, cameras, simulation_context, recording_event, stop_event):
     assert robot is not None, "Failed to initialize Articulation"
 
     num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
@@ -63,7 +126,12 @@ def recording(robot, cameras, simulation_context, recording_event, stop_event):
             print("Recording triggered by simulation step.")
 
             # Pause Simulation
-            simulation_context.stop()
+            # simulation_context.stop()
+            command_queue.put("pause")
+            while not simulation_context.is_stopped():
+                time.sleep(0.1)
+            print("Simulation paused.")
+
 
             print(f"Before resize: {index_dataset.shape}")
             index_dataset.resize((index_dataset.shape[0] + 1, 1))
@@ -122,11 +190,30 @@ def recording(robot, cameras, simulation_context, recording_event, stop_event):
 
             f.flush()  # Ensure data is saved
             print("Recording done. ")
+
             # Restart simulation
-            simulation_context.start()
+            command_queue.put("play")
+            while simulation_context.is_stopped():
+                time.sleep(0.1)
+            print("Simulation play.")
+
             recording_event.clear()
             # time.sleep(0.01)
-            
+
+
+
+
+def pause_simulation(recording_event, simulation_context):
+    while recording_event.is_set():
+        try:
+            command = command_queue.get(timeout=0.1)
+            if command == "pause":
+                simulation_context.pause()
+            elif command == "play":
+                simulation_context.play()
+        except queue.Empty:
+            pass
+
 
 def record_robot_7dofs(robot):
     """

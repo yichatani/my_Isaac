@@ -170,9 +170,10 @@ def any_grasp(data_dict):
 
     if len(gg) == 0:
         print('No Grasp detected after collision detection!')
+        return False
 
     gg = gg.nms().sort_by_score()
-    gg = gg[0:40]
+    gg = gg[0:20]
     # vis_grasps(gg,cloud)
     # exit()
 
