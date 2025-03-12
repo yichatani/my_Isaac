@@ -52,7 +52,7 @@ def control_gripper(robot, cameras, finger_start, finger_target,   # finger_star
     """
     finger_start = width_to_finger_angle(finger_start)
     finger_target = width_to_finger_angle(finger_target)
-    finger_moves = interpolate_joint_positions(finger_start, finger_target, steps=20)
+    finger_moves = interpolate_joint_positions(finger_start, finger_target, steps=30)
     for position in finger_moves:
         action = ArticulationAction(joint_positions=np.array([position]), joint_indices=np.array([6]))
         robot.apply_action(action)

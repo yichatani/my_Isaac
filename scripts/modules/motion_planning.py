@@ -30,6 +30,22 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
     target_up20_joint_states,succ = AKSolver.compute_inverse_kinematics(target_translation_up20,target_orientation_up20)
     target_joint_positions = target_joint_states.joint_positions
     target_up20_joint_positions = target_up20_joint_states.joint_positions
+
+    print(f"####Check the target joint_position####:{target_joint_positions}")
+    print(f"####Check the up20 joint_position####:{target_up20_joint_positions}")
+
+    # target_joint_positions.setflags(write=True)
+    # target_up20_joint_positions.setflags(write=True)
+    target_joint_positions = target_joint_positions.copy()
+    target_up20_joint_positions = target_up20_joint_positions.copy()
+
+    # make sure the wrist don't rotate too much, to prevent collision
+    if abs(target_joint_positions[5]) > math.pi/2:
+        target_joint_positions[5] = abs(target_joint_positions[5]) - math.pi
+    if abs(target_up20_joint_positions[5]) > math.pi/2:
+        target_up20_joint_positions[5] = abs(target_up20_joint_positions[5]) - math.pi
+
+    # exit()
     
     complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,simulation_context,episode_path,is_record=True,steps=70)
 
@@ -78,7 +94,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
 
         for _ in range(80):
             simulation_context.step(render = True)
-            if math.isclose(complete_joint_positions[6], 0.7, abs_tol=1e-2):  # Tolerance of 0.01
+            if math.isclose(complete_joint_positions[6] * 0.14/0.725, 0.14, abs_tol=1e-2):  # Tolerance of 0.01
                 label_dataset[0] = 0  # Negative sample
             else:
                 label_dataset[0] = 1  # Positive sample

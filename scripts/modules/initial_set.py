@@ -1,10 +1,12 @@
 import os
+import math
 import time
 import omni.usd # type: ignore
 from PIL import Image
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation as R
 from pxr import Usd, UsdGeom # type: ignore
 from omni.isaac.core.prims import XFormPrim # type: ignore
 from omni.isaac.core.articulations import Articulation # type: ignore
@@ -12,6 +14,7 @@ from omni.isaac.core.utils.prims import is_prim_path_valid # type: ignore
 from omni.isaac.core.simulation_context import SimulationContext # type: ignore
 import omni.replicator.core as rep # type: ignore
 from omni.isaac.core.utils.stage import get_current_stage # type: ignore
+from omni.isaac.core.utils.rotations import euler_angles_to_quat # type: ignore
 from pxr import UsdPhysics # type: ignore
 from omni.isaac.sensor import Camera # type: ignore
 
@@ -27,14 +30,36 @@ def get_all_prim_paths(stage):
         print(path)
 
 
-def reset_obj_position(prim_paths):
+def reset_obj_position(prim_paths,simulation_context):
     for prim_path in prim_paths:
         obj = XFormPrim(prim_path)
-        obj.set_world_pose(position=[
-            random.uniform(0.33, 1.10), 
-            random.uniform(-0.18,0.60), 
-            random.uniform(0.65,1)])
+        euler_angles = [
+            random.uniform(-math.pi, math.pi),
+            random.uniform(-math.pi, math.pi),
+            random.uniform(-math.pi, math.pi)
+        ]
+        obj.set_world_pose(
+            position=[
+                random.uniform(0.33, 1.10), 
+                random.uniform(-0.15,0.55), 
+                random.uniform(0.75,0.8)
+            ],
+            # rotation = [
+            # random.uniform(-math.pi, math.pi), 
+            # random.uniform(-math.pi, math.pi), 
+            # random.uniform(-math.pi, math.pi)],
+            # )
+            # orientation = tuple(euler_angles_to_quat(
+            # random.uniform(-math.pi, math.pi), 
+            # random.uniform(-math.pi, math.pi), 
+            # random.uniform(-math.pi, math.pi)
+            # ))
+            orientation = tuple(R.from_euler('xyz', euler_angles).as_quat())
+
+        )
     print("Reset the objects' positions!")
+    for _ in range(50):
+            simulation_context.step(render=True)
 
 
 def find_robot(robot_path):
@@ -68,11 +93,16 @@ def initialize_robot(robot_path):
 
     return robot
 
-def robot_go_home(robot):
+def reset_robot_pose(robot,simulation_context):
     complete_joint_positions = robot.get_joint_positions()
-    setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+    setting_joint_positions = np.array([0, -1.447, 0.749 + random.uniform(-0.087, 0.087), 
+                                        -0.873 + random.uniform(-0.087, 0.087), # give the last three joints a random rotation of -5 - 5 degrees
+                                        -1.571 + random.uniform(-0.087, 0.087), 
+                                        0 + random.uniform(-0.087,0.087)])
     complete_joint_positions[:6] = setting_joint_positions
     robot.set_joint_positions(complete_joint_positions)
+    for _ in range(10):
+        simulation_context.step(render=True)
 
 def initialize_simulation_context():
     """Initialize and reset the simulation context."""
