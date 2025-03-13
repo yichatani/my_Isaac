@@ -47,9 +47,11 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
 
     # exit()
     
-    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,simulation_context,episode_path,is_record=True,steps=70)
+    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,
+                                             simulation_context,episode_path,is_record=True,steps=70)
 
-    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_joint_positions,simulation_context,episode_path,is_record=True, steps=70)
+    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_joint_positions,
+                                             simulation_context,episode_path,is_record=True, steps=70)
     #     simulation_context.step(render = True)
     # end_position,end_rotation = AKSolver.compute_end_effector_pose()
     # print(f"==end_position==:\n{end_position}\n==end_rotation==\n:{end_rotation}")
@@ -62,27 +64,14 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
         recording(robot,cameras,episode_path,simulation_context)
         
 
-    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,simulation_context,episode_path,is_record=True,steps=50)
+    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,
+                                             simulation_context,episode_path,is_record=True,steps=70)
     
 
     # stop_event.set()
     # record_thread.join()
     # print("Recording thread stopped.")
 
-
-    # num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
-    # for _ in range(5):
-    #     simulation_context.step(render = True)
-    # complete_joint_positions = robot.get_joint_positions()
-    # print("completele_joint_positions[6]",complete_joint_positions[6])
-    # episode_path = os.path.join(DATA_DIR, f"episode_{num_files-1}.h5")
-    # with h5py.File(episode_path, "a") as f:
-    #     label_dataset = f["label"]
-    #     label_dataset.resize((label_dataset.shape[0] + 1, 1))
-    #     if round(complete_joint_positions[6],1)==0.7:
-    #         label_dataset[-1] = 0   # 0 means negative samples
-    #     else:
-    #         label_dataset[-1] = 1   # 1 means positive samples
     with h5py.File(episode_path, "a") as f:
         if "label" not in f:
             # If dataset does not exist, create it with initial size (1,1) and allow resizing
@@ -92,9 +81,9 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
         else:
             label_dataset = f["label"]
 
-        for _ in range(80):
+        for _ in range(100):
             simulation_context.step(render = True)
-            if math.isclose(complete_joint_positions[6] * 0.14/0.725, 0.14, abs_tol=1e-2):  # Tolerance of 0.01
+            if math.isclose(complete_joint_positions[6] * 0.14/0.725, 0.14, abs_tol=1e-2):  # Tolerance of 0.003
                 label_dataset[0] = 0  # Negative sample
             else:
                 label_dataset[0] = 1  # Positive sample
@@ -102,7 +91,8 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
     print("Updated label dataset in", episode_path)
 
 
-    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],putting_joint_positions,simulation_context,episode_path,is_record=False,steps=30)
+    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],putting_joint_positions,
+                                             simulation_context,episode_path,is_record=False,steps=30)
     for _ in range(10):
         simulation_context.step(render = True)
         # if not recording_event.is_set():
@@ -111,9 +101,11 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
     stop_force_control_gripper(robot)
     complete_joint_positions = robot.get_joint_positions()
     finger_joint_width = finger_angle_to_width(complete_joint_positions[6])
-    complete_joint_positions = control_gripper(robot,cameras,finger_joint_width,0.14,complete_joint_positions,simulation_context,episode_path, is_record=False)
+    complete_joint_positions = control_gripper(robot,cameras,finger_joint_width,0.14,complete_joint_positions,
+                                               simulation_context,episode_path, is_record=False)
 
-    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],setting_joint_positions,simulation_context, episode_path,is_record=False,steps=30)
+    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],setting_joint_positions,
+                                             simulation_context, episode_path,is_record=False,steps=30)
     for _ in range(50):
         simulation_context.step(render = True)
         # if not recording_event.is_set():

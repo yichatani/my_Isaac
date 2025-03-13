@@ -24,7 +24,7 @@ def read_values(path, key):
 
 if __name__ == "__main__":
 
-    for _ in range(0,1):
+    for _ in range(0,4):
         path = ROOT_DIR + f"/episode_{_}.h5"
         # read_structure(path)
         # print("======")

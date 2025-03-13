@@ -54,11 +54,13 @@ obj_prim_path = [
     "/SM_Mug_A2",
     "/_05_tomato_soup_can",
     "/_11_banana",
-    "/Office_Depot_Canon"
+    "/Office_Depot_Canon",
+    "/_10_potted_meat_can",
+    "/_08_pudding_box"
 ]
 
-recording_event = threading.Event()
-stop_event = threading.Event()
+# recording_event = threading.Event()
+# stop_event = threading.Event()
 
 def handle_signal(signum, frame):
     """Handle SIGINT for clean exit."""
@@ -106,9 +108,9 @@ def main():
 
     global camera_paths
     sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
-    in_hand_cam = initial_camera(camera_paths["in_hand"],60,(512,512))
-    up_cam = initial_camera(camera_paths["up"],60,(512,512))
-    front_cam = initial_camera(camera_paths["front"],60,(512,512))
+    in_hand_cam = initial_camera(camera_paths["in_hand"],60,(448,448))
+    up_cam = initial_camera(camera_paths["up"],60,(448,448))
+    front_cam = initial_camera(camera_paths["front"],60,(448,448))
     record_camera_dict = {
         "in_hand": in_hand_cam,
         "up": up_cam,
@@ -127,7 +129,7 @@ def main():
             # record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
             # record_thread.start()
             reset_robot_pose(robot,simulation_context)
-            episode_path = create_episede_file(record_camera_dict)
+            episode_path = create_episede_file(record_camera_dict,height=448,width=448)
 
             data_dict = rgb_and_depth(sensor,simulation_context)
 

@@ -40,26 +40,22 @@ def reset_obj_position(prim_paths,simulation_context):
         ]
         obj.set_world_pose(
             position=[
-                random.uniform(0.33, 1.10), 
-                random.uniform(-0.15,0.55), 
-                random.uniform(0.75,0.8)
+                # random.uniform(0.33, 1.10), 
+                # random.uniform(-0.15,0.55), 
+                # random.uniform(0.8,0.85)
+                random.uniform(0.6,0.9),
+                random.uniform(-0.11,0.4),
+                random.uniform(0.85,0.9)
+                
             ],
-            # rotation = [
-            # random.uniform(-math.pi, math.pi), 
-            # random.uniform(-math.pi, math.pi), 
-            # random.uniform(-math.pi, math.pi)],
-            # )
-            # orientation = tuple(euler_angles_to_quat(
-            # random.uniform(-math.pi, math.pi), 
-            # random.uniform(-math.pi, math.pi), 
-            # random.uniform(-math.pi, math.pi)
-            # ))
             orientation = tuple(R.from_euler('xyz', euler_angles).as_quat())
-
         )
-    print("Reset the objects' positions!")
+        for _ in range(20):
+            simulation_context.step(render=True)
     for _ in range(50):
             simulation_context.step(render=True)
+    print("Reset the objects' positions!")
+    
 
 
 def find_robot(robot_path):
