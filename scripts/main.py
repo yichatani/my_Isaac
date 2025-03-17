@@ -19,6 +19,7 @@ import numpy as np
 import torch
 import time
 import threading
+from matplotlib import pyplot as plt
 # torch.set_num_threads(1)
 # torch.set_num_interop_threads(1)
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +28,7 @@ from omni.isaac.core.utils.extensions import get_extension_path_from_name # type
 from omni.isaac.core import World # type: ignore
 from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinematicsSolver
 from modules.grasp_generator import any_grasp
-from modules.control import control_gripper,finger_angle_to_width
+from modules.control import control_gripper,finger_angle_to_width, start_force_control_gripper, stop_force_control_gripper
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, rgb_and_depth,reset_obj_position
 from modules.record_data import create_episede_file
 from modules.motion_planning import planning_grasp_path
@@ -142,6 +143,19 @@ def main():
                 break
             complete_joint_positions = robot.get_joint_positions()
             
+            # start_force_control_gripper(robot)
+            # check_data = np.array([])
+            # for _ in range(100):
+            #     # print(robot.get_joint_positions())
+            #     check_data = np.append(check_data, robot.get_joint_positions()[6])
+            #     simulation_context.step(render=True)
+            # print(check_data)
+            # x_values = np.arange(len(check_data))
+            # y_values = check_data
+            # plt.plot(x_values,y_values)
+            # stop_force_control_gripper(robot)
+            # exit()
+
             complete_joint_positions = control_gripper(robot, record_camera_dict, finger_angle_to_width(complete_joint_positions[6]),any_data_dict["width"],
                                                     complete_joint_positions,simulation_context,episode_path,is_record=True)
 

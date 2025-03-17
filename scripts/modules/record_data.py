@@ -24,8 +24,8 @@ def create_episede_file(cameras,height,width):
             for cam in cameras.keys():
 
                 # Both the rgb and depth should be normalized before training
-                f.create_dataset(f"{cam}/rgb", shape=(1, height, width, 3), maxshape=(None, height, width, 3),    
-                                    dtype=np.float32, compression="gzip")
+                # f.create_dataset(f"{cam}/rgb", shape=(1, height, width, 3), maxshape=(None, height, width, 3),    
+                #                     dtype=np.float32, compression="gzip")
                 f.create_dataset(f"{cam}/depth", shape=(1, height, width), maxshape=(None, height, width), # last stop here
                                     dtype=np.float32, compression="gzip")
     return episode_path
@@ -74,8 +74,8 @@ def recording(robot, cameras, episode_path, simulation_context):
             data_dict = rgb_and_depth(cameras[cam], simulation_context)
 
             # Save data
-            f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 448, 448, 3)) ## Here to change the recording size of the image.
-            f[f"{cam}/rgb"][-1] = data_dict["rgb"]
+            # f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 448, 448, 3)) ## Here to change the recording size of the image.
+            # f[f"{cam}/rgb"][-1] = data_dict["rgb"]
 
             f[f"{cam}/depth"].resize((f[f"{cam}/depth"].shape[0] + 1, 448, 448))
             f[f"{cam}/depth"][-1] = data_dict["depth"]

@@ -10,6 +10,18 @@ from modules.record_data import recording
 
 DATA_DIR = os.path.join(ROOT_DIR + "/../../episodes")
 
+def calculate_slope(x, y):
+    # Fit a linear regression model to the data
+    slope, intercept = np.polyfit(x, y, 1)
+    return slope
+
+def remove_close_values(arr, threshold=1e-3):
+    """Remove values that are very close to each other."""
+    arr = np.sort(arr)  # Ensure sorted order
+    diff = np.diff(arr)  # Compute differences between consecutive elements
+    mask = np.insert(diff > threshold, 0, True)  # Keep first element, remove close ones
+    return arr[mask]
+
 def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context,episode_path):
 
     setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
@@ -77,16 +89,25 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
             # If dataset does not exist, create it with initial size (1,1) and allow resizing
             label_dataset = f.create_dataset("label", shape=(1,), dtype=np.int32, compression="gzip")
 
-            label_dataset[0] = 1  # Default to positive
+            label_dataset[0] = 0  # Default to negative
         else:
             label_dataset = f["label"]
+            label_dataset[0] = 0  # Default to negative
 
+        check_width = np.array([])
         for _ in range(100):
             simulation_context.step(render = True)
-            if math.isclose(complete_joint_positions[6] * 0.14/0.725, 0.14, abs_tol=1e-2):  # Tolerance of 0.003
-                label_dataset[0] = 0  # Negative sample
-            else:
-                label_dataset[0] = 1  # Positive sample
+            # if math.isclose(complete_joint_positions[6] * 0.14/0.725, 0.14, abs_tol=1e-2):  # Tolerance of 0.003
+            #     label_dataset[0] = 0  # Negative sample
+            # else:
+            #     label_dataset[0] = 1  # Positive sample
+
+            check_width = np.append(check_width, robot.get_joint_positions()[6])
+        
+        # check_width = remove_close_values(check_width)
+            
+        if calculate_slope(np.arange(2),check_width[-2:])<=0.0065 and not math.isclose(robot.get_joint_positions()[6] * 0.14/0.725, 0.14, abs_tol=1e-2):
+            label_dataset[0] = 1
             
     print("Updated label dataset in", episode_path)
 
