@@ -51,12 +51,16 @@ camera_paths = {
 # test
 obj_prim_path = [
     "/rubiks_cube",
+    # "/Lemon_01",
+    # "/_02_master_chef_can",
+    "/_09_gelatin_box",
     "/Android_Figure_Panda",
-    "/SM_Mug_A2",
+    "/nvidia_cube",
+    #"/SM_Mug_A2",
     "/_05_tomato_soup_can",
     "/_11_banana",
     "/Office_Depot_Canon",
-    "/_10_potted_meat_can",
+    #"/_10_potted_meat_can",
     "/_08_pudding_box"
 ]
 

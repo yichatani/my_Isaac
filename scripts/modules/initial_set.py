@@ -45,7 +45,7 @@ def reset_obj_position(prim_paths,simulation_context):
                 # random.uniform(0.8,0.85)
                 random.uniform(0.6,0.9),
                 random.uniform(-0.11,0.4),
-                random.uniform(0.85,0.9)
+                random.uniform(0.90,1.00)
                 
             ],
             orientation = tuple(R.from_euler('xyz', euler_angles).as_quat())
