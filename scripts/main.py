@@ -30,7 +30,7 @@ from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinem
 from modules.grasp_generator import any_grasp
 from modules.control import control_gripper,finger_angle_to_width, start_force_control_gripper, stop_force_control_gripper
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, rgb_and_depth,reset_obj_position
-from modules.record_data import create_episede_file
+from modules.record_data import create_episode_file
 from modules.motion_planning import planning_grasp_path
 
 ### Paths
@@ -134,7 +134,7 @@ def main():
             # record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
             # record_thread.start()
             reset_robot_pose(robot,simulation_context)
-            episode_path = create_episede_file(record_camera_dict,height=448,width=448)
+            episode_path = create_episode_file(record_camera_dict,height=448,width=448)
 
             data_dict = rgb_and_depth(sensor,simulation_context)
 

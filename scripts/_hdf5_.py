@@ -20,11 +20,11 @@ def read_values(path, key):
     with h5py.File(path, 'r') as f:
         dset = f[key]
         print("Dataset shape:", dset.shape)
-        print("First 10 values:", dset[100:110])
+        print("First 10 values:", dset[4:5])
 
 if __name__ == "__main__":
 
-    for _ in range(1,2):
+    for _ in range(4,5):
         path = ROOT_DIR + f"/episode_{_}.h5"
         # print("======")
         # read_values(path, "action")
