@@ -166,7 +166,9 @@ def set_camera_parameters(camera):
     camera.set_horizontal_aperture(horizontal_aperture / 10.0)  # Convert from mm to cm (or 1/10th of a world unit)
     camera.set_vertical_aperture(vertical_aperture / 10.0)
 
-    camera.set_clipping_range(0.01, 1.0e7)
+    # camera.set_clipping_range(0.01, 1.0e7)
+    camera.set_clipping_range(0.1, 3.0)
+
 
     return camera
 

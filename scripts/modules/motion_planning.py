@@ -60,10 +60,10 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
     # exit()
     
     complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,
-                                             simulation_context,episode_path,is_record=True,steps=70)
+                                             simulation_context,episode_path,is_record=True,steps=60)
 
     complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_joint_positions,
-                                             simulation_context,episode_path,is_record=True, steps=70)
+                                             simulation_context,episode_path,is_record=True, steps=60)
     #     simulation_context.step(render = True)
     # end_position,end_rotation = AKSolver.compute_end_effector_pose()
     # print(f"==end_position==:\n{end_position}\n==end_rotation==\n:{end_rotation}")
@@ -77,7 +77,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
         
 
     complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,
-                                             simulation_context,episode_path,is_record=True,steps=70)
+                                             simulation_context,episode_path,is_record=True,steps=60)
     
 
     # stop_event.set()
