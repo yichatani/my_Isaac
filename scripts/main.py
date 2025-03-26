@@ -41,27 +41,27 @@ urdf_path = os.path.join(ROOT_DIR, "../urdf/ur10e_gripper.urdf")
 yaml_path = kinematics_config_dir + "/universal_robots/ur10e/rmpflow/ur10e_robot_description.yaml"
 
 ### Prim path
-robot_path = "/ur10e"
+robot_path = "/World/ur10e"
 camera_paths = {
-    "sensor": "/ur10e/tool0/Camera",
-    "in_hand": "/ur10e/tool0/in_hand",
+    "sensor": "/World/ur10e/tool0/Camera",
+    "in_hand": "/World/ur10e/tool0/in_hand",
     "up": "/World/up",
     "front": "/World/front"
 }
 # test
 obj_prim_path = [
-    "/rubiks_cube",
+    # "/rubiks_cube",
     # "/Lemon_01",
     # "/_02_master_chef_can",
-    "/_09_gelatin_box",
-    "/Android_Figure_Panda",
+    # "/_09_gelatin_box",
+    # "/Android_Figure_Panda",
     "/nvidia_cube",
-    #"/SM_Mug_A2",
-    "/_05_tomato_soup_can",
-    "/_11_banana",
-    "/Office_Depot_Canon",
+    # "/SM_Mug_A2",
+    # "/_05_tomato_soup_can",
+    # "/_11_banana",
+    # "/Office_Depot_Canon",
     #"/_10_potted_meat_can",
-    "/_08_pudding_box"
+    # "/_08_pudding_box"
 ]
 
 # recording_event = threading.Event()

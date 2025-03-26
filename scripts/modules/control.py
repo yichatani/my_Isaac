@@ -6,7 +6,7 @@ from omni.isaac.core.utils.stage import open_stage, get_current_stage, add_refer
 from pxr import UsdPhysics  # type: ignore
 from modules.record_data import pause_simulation, recording
 
-# robot_path = "/ur10e"
+# robot_path = "/World/ur10e"
 
 def interpolate_joint_positions(start_positions, target_positions, steps=50):
     """
@@ -72,9 +72,9 @@ def control_gripper(robot, cameras, finger_start, finger_target,   # finger_star
 
 def set_joint_stiffness_damping(stage, joint_path, stiffness, damping):
     """ Set stiffness and damping for a specific joint using UsdPhysics.DriveAPI """
-    joint_path = "/ur10e/robotiq_140_base_link/finger_joint"
+    joint_path = "/World/ur10e/robotiq_140_base_link/finger_joint"
     joint_prim = stage.GetPrimAtPath(joint_path)
-    # joint_prim = "/ur10e/robotiq_140_base_link/finger_joint"
+    # joint_prim = "/World/ur10e/robotiq_140_base_link/finger_joint"
     if not joint_prim or not joint_prim.IsValid():
         print(f"Joint '{joint_path}' not found in the stage.")
         return False
@@ -91,7 +91,7 @@ def set_joint_stiffness_damping(stage, joint_path, stiffness, damping):
 
 def start_force_control_gripper(robot):
     gripper_dof_name = "finger_joint"
-    gripper_dof_path = "/ur10e/robotiq_140_base_link/finger_joint"
+    gripper_dof_path = "/World/ur10e/robotiq_140_base_link/finger_joint"
     gripper_dof_index = robot.dof_names.index(gripper_dof_name)
     stage = get_current_stage()
 
@@ -104,7 +104,7 @@ def start_force_control_gripper(robot):
     #     recording_event.set()
 
     torques = robot.get_applied_joint_efforts()
-    torques[gripper_dof_index] = 4     # max torque
+    torques[gripper_dof_index] = 5     # max torque
     robot.set_joint_efforts(torques)
     # simulation_context.step(render=True)
     # # recording_event.set()
@@ -113,7 +113,7 @@ def start_force_control_gripper(robot):
 
 def stop_force_control_gripper(robot):
     gripper_dof_name = "finger_joint"
-    gripper_dof_path = "/ur10e/robotiq_140_base_link/finger_joint"
+    gripper_dof_path = "/World/ur10e/robotiq_140_base_link/finger_joint"
     gripper_dof_index = robot.dof_names.index(gripper_dof_name)
     stage = get_current_stage()
     # complete_joint_positions = robot.get_joint_positions()

@@ -4,17 +4,19 @@ from scipy.spatial.transform import Rotation as R
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 from omni.isaac.core.utils.stage import get_current_stage# type: ignore
 from omni.isaac.core.prims import XFormPrim # type: ignore
+import omni.usd # type: ignore
 from pxr import Usd, UsdGeom # type: ignore
 
 usd_file_path = os.path.join(ROOT_DIR, "../../ur10e_grasp_set.usd")
-robot_path = "/ur10e"
-camera_path = "/ur10e/tool0/Camera"
-tool0_path = "/ur10e/tool0"
-flange_path = "/ur10e/flange"
-base_path = "/ur10e/base"
-baselink_path = "/ur10e/base_link"
-robotiqpad_R_path = "/ur10e/right_inner_finger_pad"
-robotiqpad_L_path = "/ur10e/left_inner_finger_pad"
+robot_path = "/World/ur10e"
+camera_path = "/World/ur10e/tool0/Camera"
+front_camera_path = "/World/front"
+tool0_path = "/World/ur10e/tool0"
+flange_path = "/Wprld/ur10e/flange"
+base_path = "/World/ur10e/base"
+baselink_path = "/World/ur10e/base_link"
+robotiqpad_R_path = "/World/ur10e/right_inner_finger_pad"
+robotiqpad_L_path = "/World/ur10e/left_inner_finger_pad"
 
 def create_rotation_matrix(axis, angle_degrees):
     """
@@ -143,7 +145,41 @@ def transform_terminator(any_data_dict):
     from target tool0 to baselink
     """
     transform_stage = Usd.Stage.Open(usd_file_path)
-    
+
+    # stage = omni.usd.get_context().get_stage()
+
+    # frame_baselink = stage.GetPrimAtPath(baselink_path)
+    # frame_front_camera = stage.GetPrimAtPath(front_camera_path)
+
+    # # 获取世界变换
+    # T_baselink_2_global = omni.usd.get_world_transform_matrix(frame_baselink)
+    # # print("T_baselink_2_global:\n",T_baselink_2_global)
+    # T_front_camera_2_global = omni.usd.get_world_transform_matrix(frame_front_camera)
+    # # print("T_front_camera_2_global:\n",T_front_camera_2_global)
+
+    # # 转换为 numpy
+    # T_baselink_2_global = np.array(T_baselink_2_global).reshape(4,4).T
+    # print("T_baselink_2_global:\n",T_baselink_2_global)
+    # T_front_camera_2_global = np.array(T_front_camera_2_global).reshape(4,4).T
+    # print("T_front_camera_2_global:\n",T_front_camera_2_global)
+
+    # # 计算相对变换
+    # T_front_camera_2_baselink = np.linalg.inv(T_baselink_2_global) @ T_front_camera_2_global
+
+    # print("front camera to baselink:\n", T_front_camera_2_baselink)
+
+    # Rx_180 = np.array([
+    # [1,  0,   0, 0],
+    # [0, -1,   0, 0],
+    # [0,  0,  -1, 0],
+    # [0,  0,   0, 1]
+    # ])
+
+    # T_front_camera_2_baselink_new = T_front_camera_2_baselink @ Rx_180
+    # print("front camera to baselink new:\n", T_front_camera_2_baselink_new)
+
+    # exit()
+
     frame_tool0 = transform_stage.GetPrimAtPath(tool0_path)
     xformable_tool0 = UsdGeom.Xformable(frame_tool0)
     T_tool0_2_baselink = xformable_tool0.GetLocalTransformation()

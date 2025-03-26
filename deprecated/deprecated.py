@@ -402,3 +402,234 @@ def set_camera_parameters__(camera):
     camera.set_clipping_range(0.05, 1.0e5)
 
     return camera
+
+
+
+
+
+##########
+
+def recording_thread(robot, cameras, simulation_context, recording_event, stop_event):
+    """
+        Not use for now.
+    """
+    assert robot is not None, "Failed to initialize Articulation"
+
+    num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
+    episode_path = os.path.join(DATA_DIR, f"episode_{num_files}.h5")
+    print(f"Saving to: {episode_path}")
+
+    if not os.path.exists(episode_path):
+        with h5py.File(episode_path, "w") as f:
+            f.create_dataset("index", shape=(1, 1), maxshape=(None, 1), dtype=np.int32, compression="gzip")
+            f.create_dataset("agent_pos", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
+            f.create_dataset("action", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="gzip")
+            f.create_dataset("label",shape=(1, 1), maxshape=(None, 1), dtype=np.int32, compression="gzip")
+            
+            for cam in cameras.keys():
+
+                # Both the rgb and depth should be normalized before training
+                f.create_dataset(f"{cam}/rgb", shape=(1, 448, 448, 3), maxshape=(None, 448, 448, 3),    
+                                    dtype=np.float32, compression="gzip")
+                f.create_dataset(f"{cam}/depth", shape=(1, 448, 448), maxshape=(None, 448, 448), # last stop here
+                                    dtype=np.float32, compression="gzip")
+                # f.create_dataset(f"{cam}/point_cloud", shape=(1, 0, 3), maxshape=(None, None, 3),
+                #                     dtype=np.float32, compression="gzip")
+                # f.create_dataset(f"{cam}/colors", shape=(1, 0, 3), maxshape=(None, None, 3),    # colors = rgb / 255
+                #                     dtype=np.float32, compression="gzip")
+
+    with h5py.File(episode_path, "a") as f:
+        index_dataset = f["index"]
+        agent_pos_dataset = f["agent_pos"]
+        action_dataset = f["action"]
+
+        index = index_dataset.shape[0]  # Start from last saved index
+
+        while not stop_event.is_set():
+
+            if not recording_event.wait(timeout=1):  # Wait with a timeout to check stop_event
+                continue  # If timeout occurs, check `stop_event` again
+            print("Recording triggered by simulation step.")
+
+            # Pause Simulation
+            # simulation_context.stop()
+            command_queue.put("pause")
+            while not simulation_context.is_stopped():
+                time.sleep(0.1)
+            print("Simulation paused.")
+
+
+            print(f"Before resize: {index_dataset.shape}")
+            index_dataset.resize((index_dataset.shape[0] + 1, 1))
+            index_dataset[-1] = index
+            print(f"After resize: {index_dataset.shape}")
+
+            index += 1
+            try:
+                action = record_robot_7dofs(robot)
+                if action is None or len(action) != 7:
+                    raise ValueError("Invalid action data received")
+            except Exception as e:
+                print(f"Error retrieving robot state: {e}")
+                action = None
+
+            if action is not None:
+                action_dataset.resize((action_dataset.shape[0] + 1, 7))
+                action_dataset[-1] = action
+            else:
+                print("Skipping action dataset update: Received None or invalid action")
+
+            agent_pos_dataset.resize((agent_pos_dataset.shape[0] + 1, 7))
+
+            if action_dataset.shape[0] > 1:
+                agent_pos_dataset[-1] = action_dataset[-2]
+            else:
+                print("Skipping agent_pos update: Not enough data yet")
+
+            for cam in cameras.keys():
+
+                data_dict = rgb_and_depth(cameras[cam], simulation_context)
+
+                #save_camera_data(data_dict,output_dir=os.path.join(ROOT_DIR + "/../../output_dir"))
+
+                # point_cloud, point_colors = create_point_cloud(data_dict)
+
+                # Save data
+                f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 448, 448, 3))
+                f[f"{cam}/rgb"][-1] = data_dict["rgb"]
+
+                f[f"{cam}/depth"].resize((f[f"{cam}/depth"].shape[0] + 1, 448, 448))
+                f[f"{cam}/depth"][-1] = data_dict["depth"]
+
+                # save_camera_data(cam,data_dict,output_dir=os.path.join(ROOT_DIR + "/../../output_dir"))
+
+                # if len(point_cloud) > 0:
+                #     num_points = point_cloud.shape[0]   # pointcloud number
+                #     f[f"{cam}/point_cloud"].resize((f[f"{cam}/point_cloud"].shape[0] + 1, num_points, 3))
+                #     f[f"{cam}/point_cloud"][-1] = point_cloud
+
+                #     f[f"{cam}/colors"].resize((f[f"{cam}/colors"].shape[0] + 1, num_points, 3))
+                #     f[f"{cam}/colors"][-1] = point_colors  # Ensure same size as point cloud
+
+                ##
+            
+
+            f.flush()  # Ensure data is saved
+            print("Recording done. ")
+
+            # Restart simulation
+            command_queue.put("play")
+            while simulation_context.is_stopped():
+                time.sleep(0.1)
+            print("Simulation play.")
+
+            recording_event.clear()
+            # time.sleep(0.01)
+
+
+def recording_deprecated(robot, cameras, episode_path, simulation_context):
+
+    assert robot is not None, "Failed to initialize Articulation"
+    with h5py.File(episode_path, "a") as f:
+        index_dataset = f["index"]
+        agent_pos_dataset = f["agent_pos"]
+        action_dataset = f["action"]
+
+        index = index_dataset.shape[0]  # Start from last saved index
+
+        print("Recording triggered by simulation step.")
+
+        print(f"Before resize: {index_dataset.shape}")
+        index_dataset.resize((index_dataset.shape[0] + 1, 1))
+        index_dataset[-1] = index
+        print(f"After resize: {index_dataset.shape}")
+
+        index += 1
+        try:
+            action = record_robot_7dofs(robot)
+            if action is None or len(action) != 7:
+                raise ValueError("Invalid action data received")
+        except Exception as e:
+            print(f"Error retrieving robot state: {e}")
+            action = None
+
+        if action is not None:
+            action_dataset.resize((action_dataset.shape[0] + 1, 7))
+            action_dataset[-1] = action
+        else:
+            print("Skipping action dataset update: Received None or invalid action")
+
+        agent_pos_dataset.resize((agent_pos_dataset.shape[0] + 1, 7))
+
+        if action_dataset.shape[0] > 1:
+            agent_pos_dataset[-1] = action_dataset[-2]
+        else:
+            print("Skipping agent_pos update: Not enough data yet")
+
+        for cam in cameras.keys():
+
+            data_dict = rgb_and_depth(cameras[cam], simulation_context)
+
+            depth_raw = data_dict["depth"]
+            
+            # Remove invalid values (NaN, Inf)
+            valid_depth = depth_raw[np.isfinite(depth_raw)]
+
+            if len(valid_depth) > 0:
+                D_min, D_max = np.percentile(valid_depth, [5, 95])  # Ignore top/bottom 5%
+
+                # Normalize depth (to range [0,1])
+                data_dict["depth"] = (depth_raw - D_min) / (D_max - D_min)
+
+            # Get RGB shape dynamically
+            height, width = data_dict["rgb"].shape[:2]
+
+            # # Save data
+            # f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, 448, 448, 3)) ## Here to change the recording size of the image.
+            # f[f"{cam}/rgb"][-1] = data_dict["rgb"].astype(np.uint8)
+
+            # f[f"{cam}/depth"].resize((f[f"{cam}/depth"].shape[0] + 1, 448, 448))
+            # f[f"{cam}/depth"][-1] = data_dict["depth"].astype(np.float16)
+
+            # Save RGB
+            f[f"{cam}/rgb"].resize((f[f"{cam}/rgb"].shape[0] + 1, height, width, 3))
+            f[f"{cam}/rgb"][-1] = data_dict["rgb"].astype(np.uint8)
+
+            # Save Depth
+            f[f"{cam}/depth"].resize((f[f"{cam}/depth"].shape[0] + 1, height, width))
+            f[f"{cam}/depth"][-1] = data_dict["depth"].astype(np.float16)
+        
+
+        f.flush()  # Ensure data is saved
+        print("Recording done. ")
+
+
+def load_episode_data_deprecated(episode_path):
+
+    with h5py.File(episode_path, "r") as f:
+        index = f["index"][:]
+        agent_pos = f["agent_pos"][:]
+        action = f["action"][:]
+
+        cameras_data = {}
+
+        for cam in f.keys():
+            if cam == "index" or cam == "agent_pos" or cam == "action":
+                continue
+
+            rgb = f[f"{cam}/rgb"][:]
+            depth_normalized = f[f"{cam}/depth"][:]
+
+            # Compute D_min and D_max from stored depth values
+            valid_depth = depth_normalized[np.isfinite(depth_normalized)]
+            if len(valid_depth) > 0:
+                D_min, D_max = np.percentile(valid_depth, [5, 95])  # Restore original range
+
+                # Denormalize depth
+                depth = depth_normalized * (D_max - D_min) + D_min
+            else:
+                depth = depth_normalized  # No valid depth values, return as is
+
+            cameras_data[cam] = {"rgb": rgb, "depth": depth}
+
+    return index, agent_pos, action, cameras_data
