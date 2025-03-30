@@ -34,8 +34,8 @@ def reset_obj_position(prim_paths,simulation_context):
     for prim_path in prim_paths:
         obj = XFormPrim(prim_path)
         euler_angles = [
-            random.uniform(-math.pi, math.pi),
-            random.uniform(-math.pi, math.pi),
+            random.uniform(-math.pi/8, math.pi/8),
+            random.uniform(-math.pi/8, math.pi/8),
             random.uniform(-math.pi, math.pi)
         ]
         obj.set_world_pose(

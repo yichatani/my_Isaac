@@ -137,6 +137,32 @@ def visualize_pose(position, orientation_matrix, name="/World/TargetMarker"):
         raise RuntimeError(f"Failed to create marker at {name}")
 
 
+def camera_extrinsic(camera_path, baselink_path):
+
+    stage = omni.usd.get_context().get_stage()
+
+    frame_baselink = stage.GetPrimAtPath(baselink_path)
+    frame_front_camera = stage.GetPrimAtPath(camera_path)
+    T_baselink_2_global = omni.usd.get_world_transform_matrix(frame_baselink)
+    T_front_camera_2_global = omni.usd.get_world_transform_matrix(frame_front_camera)
+
+    T_baselink_2_global = np.array(T_baselink_2_global).reshape(4,4).T
+    print("T_baselink_2_global:\n",T_baselink_2_global)
+    T_front_camera_2_global = np.array(T_front_camera_2_global).reshape(4,4).T
+    print("T_front_camera_2_global:\n",T_front_camera_2_global)
+    T_front_camera_2_baselink = np.linalg.inv(T_baselink_2_global) @ T_front_camera_2_global
+    print("front camera to baselink:\n", T_front_camera_2_baselink)
+    Rx_180 = np.array([ # only for Isaac camera 
+    [1,  0,   0, 0],
+    [0, -1,   0, 0],
+    [0,  0,  -1, 0],
+    [0,  0,   0, 1]
+    ])
+    T_front_camera_2_baselink_new = T_front_camera_2_baselink @ Rx_180
+    print("extrinsic matrix:\n", T_front_camera_2_baselink_new)
+
+    return T_front_camera_2_baselink_new
+
 
 def transform_terminator(any_data_dict):
     
