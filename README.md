@@ -4,6 +4,13 @@
 
 ## Logs 
 
+**[2025/3/30]**
+
+**Progress:** Finish recording part and other details. No big problem for now.
+
+**Next Step:** Focusing on Diffusion Part. 
+
+
 **[2025/2/13]**
 
 **Progress:** Finish the Grasping System. 
