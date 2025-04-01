@@ -1,3 +1,7 @@
+"""Ignore warnings"""
+import warnings
+warnings.filterwarnings("ignore")
+
 """Launch the simulation application."""
 from omni.kit.app import get_app # type: ignore
 from omni.isaac.kit import SimulationApp # type: ignore
@@ -134,8 +138,7 @@ def main():
             # record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
             # record_thread.start()
             reset_robot_pose(robot,simulation_context)
-            episode_path = create_episode_file(record_camera_dict,height=448,width=448)
-
+            
             data_dict = rgb_and_depth(sensor,simulation_context)
 
             # save_camera_data(data_dict)
@@ -145,18 +148,17 @@ def main():
                 # for _ in range(50):
                 #     simulation_context.step(render=True)
                 break
+
+            episode_path = create_episode_file(record_camera_dict,height=448,width=448)
             complete_joint_positions = robot.get_joint_positions()
             
             # start_force_control_gripper(robot)
             # check_data = np.array([])
-            # for _ in range(100):
+            # for _ in range(150):
             #     # print(robot.get_joint_positions())
             #     check_data = np.append(check_data, robot.get_joint_positions()[6])
             #     simulation_context.step(render=True)
             # print(check_data)
-            # x_values = np.arange(len(check_data))
-            # y_values = check_data
-            # plt.plot(x_values,y_values)
             # stop_force_control_gripper(robot)
             # exit()
 

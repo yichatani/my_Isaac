@@ -1,3 +1,7 @@
+"""Ignore warnings"""
+import warnings
+warnings.filterwarnings("ignore")
+
 import os
 from PIL import Image
 import cv2
@@ -168,14 +172,18 @@ def any_grasp(data_dict):
     cloud.points = o3d.utility.Vector3dVector(points)
     cloud.colors = o3d.utility.Vector3dVector(colors)
 
+    if gg is None:
+        print("No grasp detected after masking")
+        return False
+
     gg = gg.nms().sort_by_score()
     gg = gg[0:20]
     # print(gg)
     # vis_grasps(gg,cloud)
     # exit()
 
-    if len(gg) == 0 or gg[0].score < 0.20:
-        print('No Grasp detected after collision detection!')
+    if len(gg) == 0 or gg[0].score < 0.10:
+        print('No good Grasp detected after collision detection!')
         return False
 
     # target_grasp_pose_to_cam = define_grasp_pose(gg[random.randint(0, 2)])

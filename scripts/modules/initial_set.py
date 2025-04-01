@@ -52,7 +52,7 @@ def reset_obj_position(prim_paths,simulation_context):
         )
         for _ in range(20):
             simulation_context.step(render=True)
-    for _ in range(50):
+    for _ in range(60):
             simulation_context.step(render=True)
     print("Reset the objects' positions!")
     

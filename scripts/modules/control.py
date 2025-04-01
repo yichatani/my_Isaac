@@ -38,7 +38,8 @@ def finger_angle_to_width(finger_angle):
         finger_angle = max_angle
 
     if finger_angle < 0:
-        raise ValueError(f"Finger angle {finger_angle} < 0")
+        # raise ValueError(f"Finger angle {finger_angle} < 0")
+        finger_angle = 0
 
     # Convert finger joint angle to width
     width = max_width - (scale * finger_angle)
