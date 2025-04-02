@@ -69,7 +69,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
     # print(f"==end_position==:\n{end_position}\n==end_rotation==\n:{end_rotation}")
     
     start_force_control_gripper(robot)
-    for _ in range(40):
+    for _ in range(60):
         simulation_context.step(render = True)
         # if not recording_event.is_set():
         #     recording_event.set()
@@ -77,7 +77,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
         
 
     complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],target_up20_joint_positions,
-                                             simulation_context,episode_path,is_record=True,steps=60)
+                                             simulation_context,episode_path,is_record=True,steps=40)
     
 
     # stop_event.set()
@@ -95,7 +95,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
             label_dataset[0] = 0  # Default to negative
 
         check_width = np.array([])
-        for _ in range(100):
+        for _ in range(50):
             simulation_context.step(render = True)
             # if math.isclose(complete_joint_positions[6] * 0.14/0.725, 0.14, abs_tol=1e-2):  # Tolerance of 0.003
             #     label_dataset[0] = 0  # Negative sample
@@ -109,7 +109,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
         # if calculate_slope(np.arange(2),check_width[-2:])<=0.0065 and not math.isclose(robot.get_joint_positions()[6] * 0.14/0.7, 0.14, abs_tol=1e-2):
         #     label_dataset[0] = 1
 
-        if calculate_slope(np.arange(2),check_width[-2:])< -0.031497 * check_width[-1] + 0.022548 and not math.isclose(robot.get_joint_positions()[6] * 0.14/0.7, 0.14, abs_tol=8e-3):
+        if calculate_slope(np.arange(2),check_width[-2:])< -0.031497 * check_width[-1] + 0.022048 and not math.isclose(robot.get_joint_positions()[6] * 0.14/0.7, 0.14, abs_tol=8e-3):
             label_dataset[0] = 1
             print("################")
             print("################")

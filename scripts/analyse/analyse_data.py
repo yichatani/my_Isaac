@@ -89,7 +89,7 @@ def draw_slop_vs_width():
     fit_coeffs = np.polyfit(widths, slopes, 1)
     a, b = fit_coeffs
     print(f"slope = {a:.6f} * width + {b:.6f}")
-    fit_slopes = a * np.array(widths) + b
+    fit_slopes = a * np.array(widths) + b - 0.0004
 
     plt.figure(figsize=(8, 5))
     plt.plot(widths, slopes, marker='o', linestyle='-')
