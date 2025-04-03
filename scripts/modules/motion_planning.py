@@ -109,7 +109,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
         # if calculate_slope(np.arange(2),check_width[-2:])<=0.0065 and not math.isclose(robot.get_joint_positions()[6] * 0.14/0.7, 0.14, abs_tol=1e-2):
         #     label_dataset[0] = 1
 
-        if calculate_slope(np.arange(2),check_width[-2:])< -0.031497 * check_width[-1] + 0.022048 and not math.isclose(robot.get_joint_positions()[6] * 0.14/0.7, 0.14, abs_tol=8e-3):
+        if calculate_slope(np.arange(2),check_width[-2:])< -0.031497 * check_width[-1] + 0.022048 and not math.isclose(robot.get_joint_positions()[6] * 0.14/0.7, 0.14, abs_tol=6e-3):
             label_dataset[0] = 1
             print("################")
             print("################")

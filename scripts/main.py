@@ -129,14 +129,18 @@ def main():
     # Main simulation loop #
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
     episode_count = 0
-    while True:
+    # while True:
+    for _ in range(1000):
         
-        reset_obj_position(obj_prim_path,simulation_context)
+        # reset_obj_position(obj_prim_path,simulation_context)
 
         for _ in range(10):
             # stop_event.clear()
             # record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
             # record_thread.start()
+
+            reset_obj_position(obj_prim_path,simulation_context)
+
             reset_robot_pose(robot,simulation_context)
             
             data_dict = rgb_and_depth(sensor,simulation_context)
