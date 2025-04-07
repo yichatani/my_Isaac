@@ -130,7 +130,7 @@ def main():
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
     episode_count = 0
     # while True:
-    for _ in range(1000):
+    for _ in range(800):
         
         # reset_obj_position(obj_prim_path,simulation_context)
 
