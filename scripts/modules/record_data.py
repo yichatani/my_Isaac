@@ -5,6 +5,7 @@ import queue
 import numpy as np
 import cv2
 from modules.initial_set import rgb_and_depth,save_camera_data
+from policy_data import reconstruct_pointcloud, preprocess_point_cloud
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR + "/../../episodes")
@@ -126,6 +127,40 @@ def recording(robot, cameras, episode_path, simulation_context):
 
         f.flush()
         print(f"Recording frame {index} done.")
+
+
+def observing(robot, cameras, episode_path, simulation_context):
+    assert robot is not None, "Failed to initialize Articulation"
+    
+    pc_list, state_list, action_list = [], [], []
+    data_dict = rgb_and_depth(cameras['front'], simulation_context)
+    data_dict["rgb"], data_dict["depth"] = resize_images(data_dict["rgb"], data_dict["depth"])
+    rgb = data_dict["rgb"].astype(np.uint8)
+    depth_raw = data_dict["depth"]
+    pc_raw = reconstruct_pointcloud(rgb, depth_raw)
+    if pc_raw.shape[0] > 32:
+        pc = preprocess_point_cloud(pc_raw, use_cuda=True)
+        try:
+            action = record_robot_7dofs(robot)
+            if action is None or len(action) != 7:
+                raise ValueError("Invalid action data received")
+        except Exception as e:
+            print(f"Error retrieving robot state: {e}")
+            action = None
+
+        if action is not None:
+            pc_list.append(pc)
+            action_list.append(action)
+
+        if  len(action_list) > 1:
+            state_list.append(action_list[-2])
+        else:
+            state_list.append(np.zeros(7))
+    else:
+        print("Warning: Too few points in point cloud, skipping this frame.")
+
+            
+
 
 
 
