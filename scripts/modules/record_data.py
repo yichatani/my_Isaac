@@ -96,6 +96,7 @@ def recording(robot, cameras, episode_path, simulation_context):
         if index > 0:
             f["agent_pos"][-1] = f["action"][-2]
         else:
+            ################################################### if it is ok to directly padding 0
             f["agent_pos"][-1] = np.zeros(7)
 
         for cam in cameras.keys():
@@ -129,7 +130,36 @@ def recording(robot, cameras, episode_path, simulation_context):
         print(f"Recording frame {index} done.")
 
 
-def observing(robot, cameras, episode_path, simulation_context):
+# def initialize_obderving(robot, cameras, simulation_context):
+#     assert robot is not None, "Failed to initialize Articulation"
+#     pc_list, state_list, action_list = [], [], []
+#     data_dict = rgb_and_depth(cameras['front'], simulation_context)
+#     data_dict["rgb"], data_dict["depth"] = resize_images(data_dict["rgb"], data_dict["depth"])
+#     rgb = data_dict["rgb"].astype(np.uint8)
+#     depth_raw = data_dict["depth"]
+#     pc_raw = reconstruct_pointcloud(rgb, depth_raw)
+#     if pc_raw.shape[0] > 32:
+#         pc = preprocess_point_cloud(pc_raw, use_cuda=True)
+#         try:
+#             action = record_robot_7dofs(robot)
+#             if action is None or len(action) != 7:
+#                 raise ValueError("Invalid action data received")
+#         except Exception as e:
+#             print(f"Error retrieving robot state: {e}")
+#             action = None
+
+#         if action is not None:
+#             pc_list.append(pc)
+#             action_list.append(action)
+
+#         if  len(action_list) > 1:
+#             state_list.append(action_list[-2])
+#         else:
+#             state_list.append(np.zeros(7))
+#     else:
+#         print("Warning: Too few points in point cloud, skipping this frame.")
+
+def observing(robot, cameras ,simulation_context, data_sample=None):
     assert robot is not None, "Failed to initialize Articulation"
     
     pc_list, state_list, action_list = [], [], []
@@ -155,11 +185,25 @@ def observing(robot, cameras, episode_path, simulation_context):
         if  len(action_list) > 1:
             state_list.append(action_list[-2])
         else:
-            state_list.append(np.zeros(7))
+            state_list.append(action_list[-1])
     else:
         print("Warning: Too few points in point cloud, skipping this frame.")
 
-            
+    # padding 
+    if data_sample is None:
+        for _ in range(5):
+            pc_list.append(pc)
+            action_list.append(action)
+            state_list.append(action_list[-1])
+
+
+    data_sample = {
+        'obs': {
+            'agent_pos': sample['state'].astype(np.float32),
+            'point_cloud': sample['point_cloud'].astype(np.float32),
+        },
+        'action': sample['action'].astype(np.float32)
+    }
 
 
 
