@@ -3,15 +3,23 @@ import os
 # sys.path = sorted(sys.path, key=lambda p: "isaac-sim" in p)
 # for p in sys.path: print(p)
 import torch
+import torch
+print(torch.__version__)
+print(dir(torch.library))
+
 import dill
+print("AAAAA")
 import hydra
-import argparse
+print("BBBBB")
 import pathlib
 import numpy as np
 # from omegaconf import OmegaConf
 from diffusion_policy_3d.policy.dp3 import DP3
+print("CCCCC")
 from diffusion_policy_3d.dataset.my_dataset import IsaacZarrDataset
+print("DDDDD")
 from diffusion_policy_3d.common.pytorch_util import dict_apply
+print("EEEEE")
 ROOT_PATH = os.path.dirname(__file__)
 
 def load_model_from_ckpt(ckpt_path):

@@ -32,13 +32,13 @@ from modules.initial_set import initialize_robot, initialize_simulation_context,
 from modules.record_data import create_episode_file, observing
 from modules.motion_planning import planning_grasp_path
 
-# print("AAAAA")
-# # import types
-# # if not hasattr(torch, "_custom_ops"):
-# #     torch._custom_ops = types.SimpleNamespace()
-# from inference_policy.inference import inferernce
-# print("BBBBB")
-# exit()
+print("AAAAA")
+# import types
+# if not hasattr(torch, "_custom_ops"):
+#     torch._custom_ops = types.SimpleNamespace()
+from inference_policy.inference import inferernce
+print("BBBBB")
+exit()
 
 ### Paths
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp_set.usd")
@@ -152,12 +152,9 @@ def main(is_policy=False):
                     control_robot_by_policy(robot,action,simulation_context)
                     # simulation_context.step(render=True)
             else:
-                print("CCCCC")
                 data_dict = rgb_and_depth(sensor,simulation_context)
-                print("DDDDD")
                 # save_camera_data(data_dict)
                 any_data_dict = any_grasp(data_dict)
-                print("EEEEE")
                 if any_data_dict is False:
                     # reset_obj_position(obj_prim_path)
                     # for _ in range(50):
@@ -206,6 +203,6 @@ def main(is_policy=False):
 
 if __name__ == "__main__":
     
-    main(is_policy = False)
+    main(is_policy = True)
 
     
