@@ -162,4 +162,10 @@ def control_robot(robot, cameras, start_position, target_position, simulation_co
     return complete_joint_positions
 
 
-
+def control_robot_by_policy(robot, action,simulation_context):
+    """To control the robot by policy"""
+    assert action.shape[0] == 7, "Expected 7 DoF action"
+    complete_joint_positions = robot.get_joint_positions()
+    complete_joint_positions[:7] = action
+    robot.apply_action(ArticulationAction(joint_positions=complete_joint_positions))
+    simulation_context.step(render=True)

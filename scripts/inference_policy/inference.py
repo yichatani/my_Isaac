@@ -1,5 +1,5 @@
 import os
-import sys
+# import sys
 # sys.path = sorted(sys.path, key=lambda p: "isaac-sim" in p)
 # for p in sys.path: print(p)
 import torch
@@ -8,12 +8,11 @@ import hydra
 import argparse
 import pathlib
 import numpy as np
-from omegaconf import OmegaConf
+# from omegaconf import OmegaConf
 from diffusion_policy_3d.policy.dp3 import DP3
 from diffusion_policy_3d.dataset.my_dataset import IsaacZarrDataset
 from diffusion_policy_3d.common.pytorch_util import dict_apply
 ROOT_PATH = os.path.dirname(__file__)
-
 
 def load_model_from_ckpt(ckpt_path):
     print(f"Loading model from checkpoint: {ckpt_path}")
@@ -40,40 +39,32 @@ def load_model_from_ckpt(ckpt_path):
     return model, cfg, dataset
 
 
-def prepare_obs_dict(dataset, index=0):
-    item = dataset[index]
-
-    # print(item)
-    # exit()
-    
-    obs_dict = item['obs']
-    obs_dict = {k: v.unsqueeze(0) for k, v in obs_dict.items()}
-    return obs_dict
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--ckpt', type=str, default=ROOT_PATH + "/checkpoints/latest.ckpt", help='Path to checkpoint file (e.g. checkpoints/latest.ckpt)')
-    parser.add_argument('--index', type=int, default=0, help='Index of sample from dataset to use')
-    parser.add_argument('--save_action', type=str, default=None, help='Optional path to save predicted action as .npy')
-    args = parser.parse_args()
-
-    ckpt_path = pathlib.Path(args.ckpt)
+def inferernce(data_sample):
+    """
+    Perform inference using the loaded model and configuration.
+    Args:
+        data_sample (dict): A dictionary containing the input data for inference.
+    Returns:
+        np.ndarray: The predicted action as a numpy array.
+    """
+    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/latest.ckpt")
     assert ckpt_path.is_file(), f"Checkpoint not found: {ckpt_path}"
 
-    model, cfg, dataset = load_model_from_ckpt(ckpt_path)
-    obs_dict = prepare_obs_dict(dataset, index=args.index)
+    model, cfg, _ = load_model_from_ckpt(ckpt_path)
+    if data_sample == None:
+        raise ValueError("data_sample is None")
+        # obs_dict = {k: v.unsqueeze(0) for k, v in _[0]['obs'].items()}
+    else:
+        obs_dict = {k: v.unsqueeze(0) for k, v in data_sample['obs'].items()}
     obs_dict = dict_apply(obs_dict, lambda x: x.cuda())
 
     with torch.no_grad():
         result = model.predict_action(obs_dict)
         action = result['action_pred'].squeeze(0).cpu().numpy()
 
-    print("Predicted action:", action)
-    if args.save_action:
-        np.save(args.save_action, action)
-        print(f"Saved predicted action to: {args.save_action}")
+    print("Predicted action:", action[0])
+    return np.array(action[0], dtype=np.float32)
 
 
 if __name__ == "__main__":
-    main()
+    inferernce(None)

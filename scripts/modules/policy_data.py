@@ -1,9 +1,5 @@
-import os
-import h5py
 import numpy as np
 import torch
-import torchvision
-import tqdm
 import open3d as o3d
 from pytorch3d.ops import sample_farthest_points
 
@@ -47,14 +43,6 @@ def reconstruct_pointcloud(rgb, depth, visualize=False):
     point_cloud = np.concatenate([points, colors], axis=1)  # shape: (Np, 6)
     return point_cloud
 
-
-def preprocess_image(image, img_size=84):
-    image = image.astype(np.float32)
-    image = torch.from_numpy(image).permute(2, 0, 1)  # HWC -> CHW
-    image = torchvision.transforms.functional.resize(image, (img_size, img_size))
-    image = image.permute(1, 2, 0).cpu().numpy()  # CHW -> HWC
-    return image
-
 def preprocess_point_cloud(points, num_points=1024, use_cuda=True):
     extrinsics_matrix = np.array([
         [-0.61193014,  0.2056703,  -0.76370232,  2.22381139],
@@ -87,27 +75,3 @@ def preprocess_point_cloud(points, num_points=1024, use_cuda=True):
     indices = indices.cpu().squeeze(0)
     rgb = points[indices.numpy(), 3:]
     return np.hstack((sampled_pts, rgb))
-
-
-
-def process_one_shot(agent_pos, action, rgb, depth):
-    """
-        sequence T should be 6
-    """
-    pc_list, state_list, action_list = [], [], []
-    T = len(pc_list)
-    
-    pc_raw = reconstruct_pointcloud(rgb, depth)
-    if pc_raw.shape[0] > 32:
-
-        pc = preprocess_point_cloud(pc_raw, use_cuda=True)
-        
-        pc_list.append(pc)
-        state_list.append(agent_pos)
-        action_list.append(action)
-        total_count += 1
-
-    # Stack all
-    pc_arr = np.stack(pc_list, axis=0).astype('float32')
-    state_arr = np.stack(state_list, axis=0).astype('float32')
-    action_arr = np.stack(action_list, axis=0).astype('float32')

@@ -5,7 +5,7 @@ import queue
 import numpy as np
 import cv2
 from modules.initial_set import rgb_and_depth,save_camera_data
-from policy_data import reconstruct_pointcloud, preprocess_point_cloud
+from modules.policy_data import reconstruct_pointcloud, preprocess_point_cloud
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR + "/../../episodes")
@@ -96,7 +96,8 @@ def recording(robot, cameras, episode_path, simulation_context):
         if index > 0:
             f["agent_pos"][-1] = f["action"][-2]
         else:
-            ################################################### if it is ok to directly padding 0
+            # This should corerespond to the the observing function
+            # f["agent_pos"][-1] = f["action"][-1]
             f["agent_pos"][-1] = np.zeros(7)
 
         for cam in cameras.keys():
@@ -130,97 +131,53 @@ def recording(robot, cameras, episode_path, simulation_context):
         print(f"Recording frame {index} done.")
 
 
-# def initialize_obderving(robot, cameras, simulation_context):
-#     assert robot is not None, "Failed to initialize Articulation"
-#     pc_list, state_list, action_list = [], [], []
-#     data_dict = rgb_and_depth(cameras['front'], simulation_context)
-#     data_dict["rgb"], data_dict["depth"] = resize_images(data_dict["rgb"], data_dict["depth"])
-#     rgb = data_dict["rgb"].astype(np.uint8)
-#     depth_raw = data_dict["depth"]
-#     pc_raw = reconstruct_pointcloud(rgb, depth_raw)
-#     if pc_raw.shape[0] > 32:
-#         pc = preprocess_point_cloud(pc_raw, use_cuda=True)
-#         try:
-#             action = record_robot_7dofs(robot)
-#             if action is None or len(action) != 7:
-#                 raise ValueError("Invalid action data received")
-#         except Exception as e:
-#             print(f"Error retrieving robot state: {e}")
-#             action = None
-
-#         if action is not None:
-#             pc_list.append(pc)
-#             action_list.append(action)
-
-#         if  len(action_list) > 1:
-#             state_list.append(action_list[-2])
-#         else:
-#             state_list.append(np.zeros(7))
-#     else:
-#         print("Warning: Too few points in point cloud, skipping this frame.")
-
 def observing(robot, cameras ,simulation_context, data_sample=None):
     assert robot is not None, "Failed to initialize Articulation"
-    
-    pc_list, state_list, action_list = [], [], []
+    NUM_PADDING_FRAMES = 6
     data_dict = rgb_and_depth(cameras['front'], simulation_context)
     data_dict["rgb"], data_dict["depth"] = resize_images(data_dict["rgb"], data_dict["depth"])
     rgb = data_dict["rgb"].astype(np.uint8)
     depth_raw = data_dict["depth"]
     pc_raw = reconstruct_pointcloud(rgb, depth_raw)
-    if pc_raw.shape[0] > 32:
-        pc = preprocess_point_cloud(pc_raw, use_cuda=True)
-        try:
-            action = record_robot_7dofs(robot)
-            if action is None or len(action) != 7:
-                raise ValueError("Invalid action data received")
-        except Exception as e:
-            print(f"Error retrieving robot state: {e}")
-            action = None
-
-        if action is not None:
-            pc_list.append(pc)
-            action_list.append(action)
-
-        if  len(action_list) > 1:
-            state_list.append(action_list[-2])
-        else:
-            state_list.append(action_list[-1])
-    else:
-        print("Warning: Too few points in point cloud, skipping this frame.")
-
-    # padding 
+    # padding
     if data_sample is None:
-        for _ in range(5):
-            pc_list.append(pc)
-            action_list.append(action)
-            state_list.append(action_list[-1])
+        pc_list, state_list = [], []
+        if pc_raw.shape[0] > 32:
+            pc = preprocess_point_cloud(pc_raw, use_cuda=True)
+            for _ in range(NUM_PADDING_FRAMES):
+                pc_list.append(pc)
+                state_list.append(np.zeros(7))
+            pc_arr = np.stack(pc_list, axis=0).astype('float32')    
+            state_arr = np.stack(state_list, axis=0).astype('float32')
+            data_sample = {'obs': 
+                {
+                    'agent_pos': state_arr.astype(np.float32),
+                    'point_cloud': pc_arr.astype(np.float32),
+                },
+                # 'action': sample['action'].astype(np.float32)
+                }
+            return data_sample
+        else:
+            print("Warning: Too few points in point cloud, skipping this frame.")
+            return None
+    else:
+        if pc_raw.shape[0] > 32:
+            pc = preprocess_point_cloud(pc_raw, use_cuda=True)
+            state = record_robot_7dofs(robot)
+            if state.ndim == 1:
+                state = state.reshape(1, -1)  # shape: (1, 7)
+            pc = pc.reshape(1, *pc.shape)
+            if data_sample['obs']['point_cloud'].shape[0] == NUM_PADDING_FRAMES:
+                data_sample['obs']['point_cloud'] = np.concatenate((data_sample['obs']['point_cloud'][1:], pc), axis=0)
+                data_sample['obs']['agent_pos'] = np.concatenate((data_sample['obs']['agent_pos'][1:], state), axis=0)
+            else:
+                raise ValueError("Invalid shape for data_sample NUM_PADDING_FRAMES")
+            return data_sample
+        else:
+            print("Warning: Too few points in point cloud, skipping this frame.")
+            return data_sample
 
-
-    data_sample = {
-        'obs': {
-            'agent_pos': sample['state'].astype(np.float32),
-            'point_cloud': sample['point_cloud'].astype(np.float32),
-        },
-        'action': sample['action'].astype(np.float32)
-    }
-
-
-
-
-
-
-def pause_simulation(recording_event, simulation_context):
-    while recording_event.is_set():
-        try:
-            command = command_queue.get(timeout=0.1)
-            if command == "pause":
-                simulation_context.pause()
-            elif command == "play":
-                simulation_context.play()
-        except queue.Empty:
-            pass
-
+   
 
 def record_robot_7dofs(robot):
     """
@@ -236,7 +193,21 @@ def record_robot_7dofs(robot):
     return robot_7dofs
 
 
-    
+############################################################################
+############################################################################
+############################################################################
+
+def pause_simulation(recording_event, simulation_context):
+    while recording_event.is_set():
+        try:
+            command = command_queue.get(timeout=0.1)
+            if command == "pause":
+                simulation_context.pause()
+            elif command == "play":
+                simulation_context.play()
+        except queue.Empty:
+            pass
+
 def create_point_cloud(data_dict):
 
     colors = data_dict["rgb"] / 255.0
