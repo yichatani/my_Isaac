@@ -1,25 +1,17 @@
-import os
-# import sys
-# sys.path = sorted(sys.path, key=lambda p: "isaac-sim" in p)
-# for p in sys.path: print(p)
-import torch
-import torch
-print(torch.__version__)
-print(dir(torch.library))
-
-import dill
-print("AAAAA")
-import hydra
-print("BBBBB")
-import pathlib
-import numpy as np
-# from omegaconf import OmegaConf
-from diffusion_policy_3d.policy.dp3 import DP3
-print("CCCCC")
-from diffusion_policy_3d.dataset.my_dataset import IsaacZarrDataset
-print("DDDDD")
-from diffusion_policy_3d.common.pytorch_util import dict_apply
-print("EEEEE")
+try:
+    import os
+    import torch
+    import dill
+    import hydra
+    import pathlib
+    import numpy as np
+    # from omegaconf import OmegaConf
+    from diffusion_policy_3d.policy.dp3 import DP3
+    from diffusion_policy_3d.dataset.my_dataset import IsaacZarrDataset
+    from diffusion_policy_3d.common.pytorch_util import dict_apply
+    from diffusion_policy_3d.model.common.normalizer import LinearNormalizer
+except:
+    raise ImportError("inference.py import error, please check your environment.")
 ROOT_PATH = os.path.dirname(__file__)
 
 def load_model_from_ckpt(ckpt_path):
@@ -47,7 +39,7 @@ def load_model_from_ckpt(ckpt_path):
     return model, cfg, dataset
 
 
-def inferernce(data_sample):
+def inference(data_sample,action_steps=4):
     """
     Perform inference using the loaded model and configuration.
     Args:
@@ -63,16 +55,27 @@ def inferernce(data_sample):
         raise ValueError("data_sample is None")
         # obs_dict = {k: v.unsqueeze(0) for k, v in _[0]['obs'].items()}
     else:
-        obs_dict = {k: v.unsqueeze(0) for k, v in data_sample['obs'].items()}
+        assert len(data_sample['obs']['agent_pos']) == 6, "agent_pos should be of length 6"
+        data_tensor = data_sample
+        data_tensor['obs'] = {
+            'agent_pos': torch.tensor(data_tensor['obs']['agent_pos']),        # -> [1, 6, 7]
+            'point_cloud': torch.tensor(data_tensor['obs']['point_cloud'])     # -> [1, 6, N, 6]
+        }
+        obs_dict = {k: v.unsqueeze(0) for k, v in data_tensor['obs'].items()}
     obs_dict = dict_apply(obs_dict, lambda x: x.cuda())
 
     with torch.no_grad():
         result = model.predict_action(obs_dict)
         action = result['action_pred'].squeeze(0).cpu().numpy()
 
-    print("Predicted action:", action[0])
-    return np.array(action[0], dtype=np.float32)
+    print("Predicted action:", action[0:action_steps])
+    if data_sample['obs']['agent_pose'].shape[0] == 6:
+        data_sample['obs']['point_cloud'] = np.concatenate((data_sample['obs']['point_cloud'][4:], pc), axis=0)
+        data_sample['obs']['agent_pos'] = np.concatenate((data_sample['obs']['agent_pos'][4:], state), axis=0)
+    else:
+        raise ValueError("Invalid shape for data_sample NUM_PADDING_FRAMES")
+    return np.array(action[0:action_steps], dtype=np.float32)
 
 
 if __name__ == "__main__":
-    inferernce(None)
+    inference(None)

@@ -1,14 +1,16 @@
 .gitignore
 setup.py
-/home/ani/3D-Diffusion-Policy/third_party/pytorch3d_simplified/pytorch3d/csrc/ext.cpp
-/home/ani/3D-Diffusion-Policy/third_party/pytorch3d_simplified/pytorch3d/csrc/sample_farthest_points/sample_farthest_points.cu
-/home/ani/3D-Diffusion-Policy/third_party/pytorch3d_simplified/pytorch3d/csrc/sample_farthest_points/sample_farthest_points_cpu.cpp
+/home/ani/astar/my_Isaac/scripts/inference_policy/pytorch3d_simplified/pytorch3d/csrc/ext.cpp
+/home/ani/astar/my_Isaac/scripts/inference_policy/pytorch3d_simplified/pytorch3d/csrc/sample_farthest_points/sample_farthest_points.cu
+/home/ani/astar/my_Isaac/scripts/inference_policy/pytorch3d_simplified/pytorch3d/csrc/sample_farthest_points/sample_farthest_points_cpu.cpp
+pytorch3d/_C.cpython-38-x86_64-linux-gnu.so
 pytorch3d/__init__.py
 pytorch3d.egg-info/PKG-INFO
 pytorch3d.egg-info/SOURCES.txt
 pytorch3d.egg-info/dependency_links.txt
 pytorch3d.egg-info/requires.txt
 pytorch3d.egg-info/top_level.txt
+pytorch3d/__pycache__/__init__.cpython-38.pyc
 pytorch3d/csrc/ext.cpp
 pytorch3d/csrc/sample_farthest_points/sample_farthest_points.cu
 pytorch3d/csrc/sample_farthest_points/sample_farthest_points.h
@@ -25,3 +27,5 @@ pytorch3d/csrc/utils/vec3.h
 pytorch3d/csrc/utils/warp_reduce.cuh
 pytorch3d/ops/__init__.py
 pytorch3d/ops/sample_farthest_points.py
+pytorch3d/ops/__pycache__/__init__.cpython-38.pyc
+pytorch3d/ops/__pycache__/sample_farthest_points.cpython-38.pyc

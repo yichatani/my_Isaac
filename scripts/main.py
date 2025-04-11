@@ -31,14 +31,7 @@ from modules.control import control_gripper,finger_angle_to_width, control_robot
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, rgb_and_depth,reset_obj_position
 from modules.record_data import create_episode_file, observing
 from modules.motion_planning import planning_grasp_path
-
-print("AAAAA")
-# import types
-# if not hasattr(torch, "_custom_ops"):
-#     torch._custom_ops = types.SimpleNamespace()
-from inference_policy.inference import inferernce
-print("BBBBB")
-exit()
+from inference_policy.inference import inference
 
 ### Paths
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp_set.usd")
@@ -55,7 +48,6 @@ camera_paths = {
     "up": "/World/up",
     "front": "/World/front"
 }
-# test
 obj_prim_path = [
     # "/rubiks_cube",
     # "/Lemon_01",
@@ -137,67 +129,65 @@ def main(is_policy=False):
         
         # reset_obj_position(obj_prim_path,simulation_context)
 
-        for _ in range(10):
+        # for _ in range(10):
             # stop_event.clear()
             # record_thread = threading.Thread(target=recording, args=(robot, record_camera_dict, simulation_context, recording_event, stop_event,))
             # record_thread.start()
-            reset_obj_position(obj_prim_path,simulation_context)
-            reset_robot_pose(robot,simulation_context)
+            
             
             if is_policy:
+                reset_obj_position(obj_prim_path,simulation_context)
+                reset_robot_pose(robot,simulation_context)
                 data_sample = None
-                for _ in range(250):
-                    data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
-                    action = inferernce(data_sample)
-                    control_robot_by_policy(robot,action,simulation_context)
-                    # simulation_context.step(render=True)
+                for _ in range(70):
+                    data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,action_steps=4)
+                    actions = inference(data_sample,action_steps=4)
+                    control_robot_by_policy(robot,actions,simulation_context)
+
             else:
-                data_dict = rgb_and_depth(sensor,simulation_context)
-                # save_camera_data(data_dict)
-                any_data_dict = any_grasp(data_dict)
-                if any_data_dict is False:
-                    # reset_obj_position(obj_prim_path)
-                    # for _ in range(50):
+                reset_obj_position(obj_prim_path,simulation_context)
+                reset_robot_pose(robot,simulation_context)
+                for _ in range(10):
+                    
+                    data_dict = rgb_and_depth(sensor,simulation_context)
+                    any_data_dict = any_grasp(data_dict)
+                    if any_data_dict is False:
+                        # reset_obj_position(obj_prim_path)
+                        # for _ in range(50):
+                        #     simulation_context.step(render=True)
+                        break
+
+                    episode_path = create_episode_file(record_camera_dict,height=448,width=448)
+                    complete_joint_positions = robot.get_joint_positions()
+                    
+                    # start_force_control_gripper(robot)
+                    # check_data = np.array([])
+                    # for _ in range(150):
+                    #     # print(robot.get_joint_positions())
+                    #     check_data = np.append(check_data, robot.get_joint_positions()[6])
                     #     simulation_context.step(render=True)
-                    break
+                    # print(check_data)
+                    # stop_force_control_gripper(robot)
+                    # exit()
 
-                episode_path = create_episode_file(record_camera_dict,height=448,width=448)
-                complete_joint_positions = robot.get_joint_positions()
-                
-                # start_force_control_gripper(robot)
-                # check_data = np.array([])
-                # for _ in range(150):
-                #     # print(robot.get_joint_positions())
-                #     check_data = np.append(check_data, robot.get_joint_positions()[6])
-                #     simulation_context.step(render=True)
-                # print(check_data)
-                # stop_force_control_gripper(robot)
-                # exit()
+                    complete_joint_positions = control_gripper(robot, record_camera_dict, finger_angle_to_width(complete_joint_positions[6]),any_data_dict["width"],
+                                                            complete_joint_positions,simulation_context,episode_path,is_record=True)
+ 
+                    planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path)
+                    # robot_go_home(robot)
 
-                complete_joint_positions = control_gripper(robot, record_camera_dict, finger_angle_to_width(complete_joint_positions[6]),any_data_dict["width"],
-                                                        complete_joint_positions,simulation_context,episode_path,is_record=True)
+                    if episode_count % 10 == 0:
+                        torch.cuda.empty_cache()
+                    
+                    print(f"Completed {episode_count} episodes.")
 
-                # complete_joint_positions = control_gripper(robot, record_camera_dict, finger_angle_to_width(complete_joint_positions[6]),finger_angle_to_width(0.7),
-                #                                         complete_joint_positions,simulation_context,episode_path,is_record=False)
-                
-                # exit()
-                
-                
-                planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path)
-                # robot_go_home(robot)
+                    episode_count += 1
+                    # stop_event.set()
+                    # record_thread.join()
+                    # print("Recording thread stopped.")
 
-                if episode_count % 10 == 0:
-                    torch.cuda.empty_cache()
-                
-                print(f"Completed {episode_count} episodes.")
-
-                episode_count += 1
-                # stop_event.set()
-                # record_thread.join()
-                # print("Recording thread stopped.")
-
-                # # Clean
-                # torch.cuda.empty_cache()  # clean GPU
+                    # # Clean
+                    # torch.cuda.empty_cache()  # clean GPU
 
     
 
