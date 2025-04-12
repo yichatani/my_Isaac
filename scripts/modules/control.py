@@ -4,18 +4,18 @@ from omni.isaac.core.utils.types import ArticulationAction # type: ignore
 from omni.isaac.dynamic_control import _dynamic_control   # type: ignore
 from omni.isaac.core.utils.stage import open_stage, get_current_stage, add_reference_to_stage # type: ignore
 from pxr import UsdPhysics  # type: ignore
-from modules.record_data import pause_simulation, recording
+from modules.record_data import pause_simulation, recording, observing
 
 # robot_path = "/World/ur10e"
 
-def interpolate_joint_positions(start_positions, target_positions, steps=50):
+def interpolate_joint_positions(start_positions, target_positions, steps=50)-> np.ndarray:
     """
     Interpolate between start and target joint positions.
     """
     interpolated_positions = np.linspace(start_positions, target_positions, steps)
     return interpolated_positions
 
-def width_to_finger_angle(width):
+def width_to_finger_angle(width: float) -> float:
     """Transfer from width to angle"""
     max_width = 0.140  # For 2F-140
     max_angle = 0.7    # Maximum finger_joint angle in radians
@@ -28,7 +28,7 @@ def width_to_finger_angle(width):
     finger_angle = (max_width - width) / scale # when width == max_width, finger_angle = 0
     return finger_angle
 
-def finger_angle_to_width(finger_angle):
+def finger_angle_to_width(finger_angle: float) -> float:
     """Transfer from angle to width"""
     max_width = 0.140  # For 2F-140
     max_angle = 0.7    # Maximum finger_joint angle in radians
@@ -46,7 +46,7 @@ def finger_angle_to_width(finger_angle):
     return width
 
 def control_gripper(robot, cameras, finger_start, finger_target,   # finger_start is width
-                    complete_joint_positions, simulation_context,episode_path, is_record=True):
+                    complete_joint_positions, simulation_context,episode_path, is_record=True)-> np.ndarray:
     """
         To control gripper open and close by width
         By position control
@@ -91,6 +91,7 @@ def set_joint_stiffness_damping(stage, joint_path, stiffness, damping):
     return True
 
 def start_force_control_gripper(robot):
+    """Start force control for the gripper"""
     gripper_dof_name = "finger_joint"
     gripper_dof_path = "/World/ur10e/robotiq_140_base_link/finger_joint"
     gripper_dof_index = robot.dof_names.index(gripper_dof_name)
@@ -113,6 +114,7 @@ def start_force_control_gripper(robot):
     #     recording_event.set()
 
 def stop_force_control_gripper(robot):
+    """Stop force control for the gripper"""
     gripper_dof_name = "finger_joint"
     gripper_dof_path = "/World/ur10e/robotiq_140_base_link/finger_joint"
     gripper_dof_index = robot.dof_names.index(gripper_dof_name)
@@ -141,7 +143,7 @@ def stop_force_control_gripper(robot):
 
 
 
-def control_robot(robot, cameras, start_position, target_position, simulation_context, episode_path, is_record=True,steps=50):
+def control_robot(robot, cameras, start_position, target_position, simulation_context, episode_path, is_record=True,steps=50)-> np.ndarray:
     """To control the robot by joint positions"""
     trajectory = interpolate_joint_positions(start_position, target_position, steps)
     for joint_positions in trajectory:
@@ -162,11 +164,13 @@ def control_robot(robot, cameras, start_position, target_position, simulation_co
     return complete_joint_positions
 
 
-def control_robot_by_policy(robot, actions,simulation_context):
+def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,simulation_context,data_sample)->dict:
     """To control the robot by policy"""
     assert actions.shape[1] == 7, "Expected 7 DoF action"
     for action in actions:
         complete_joint_positions = robot.get_joint_positions()
         complete_joint_positions[:7] = action
         robot.apply_action(ArticulationAction(joint_positions=complete_joint_positions))
+        data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
         simulation_context.step(render=True)
+    return data_sample

@@ -1,0 +1,33 @@
+robot_path: "/World/ur10e"
+
+camera_paths:
+  sensor: "/World/ur10e/tool0/Camera"
+  in_hand: "/World/ur10e/tool0/in_hand"
+  up: "/World/up"
+  front: "/World/front"
+
+obj_prim_paths:
+  - path: "/rubiks_cube"
+    enabled: false
+  - path: "/Lemon_01"
+    enabled: false
+  - path: "/_02_master_chef_can"
+    enabled: false
+  - path: "/_09_gelatin_box"
+    enabled: false
+  - path: "/Android_Figure_Panda"
+    enabled: false
+  - path: "/nvidia_cube"
+    enabled: false
+  - path: "/SM_Mug_A2"
+    enabled: true
+  - path: "/_05_tomato_soup_can"
+    enabled: false
+  - path: "/_11_banana"
+    enabled: false
+  - path: "/Office_Depot_Canon"
+    enabled: false
+  - path: "/_10_potted_meat_can"
+    enabled: false
+  - path: "/_08_pudding_box"
+    enabled: false

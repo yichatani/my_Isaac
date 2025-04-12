@@ -30,7 +30,7 @@ def get_all_prim_paths(stage):
         print(path)
 
 
-def reset_obj_position(prim_paths,simulation_context):
+def reset_obj_pose(prim_paths,simulation_context):
     for prim_path in prim_paths:
         obj = XFormPrim(prim_path)
         euler_angles = [
@@ -55,7 +55,24 @@ def reset_obj_position(prim_paths,simulation_context):
     for _ in range(60):
             simulation_context.step(render=True)
     print("Reset the objects' positions!")
-    
+
+def reset_obj_z(prim_paths:list,simulation_context) -> None:
+    for prim_path in prim_paths:
+        obj = XFormPrim(prim_path)
+        if obj.get_world_pose()[0][2] > 1.00:
+            obj.set_world_pose(
+            position=[
+                obj.get_world_pose()[0][0],
+                obj.get_world_pose()[0][1],
+                random.uniform(0.90,1.00)
+                
+            ],
+            orientation = obj.get_world_pose()[1]
+        )
+        for _ in range(20):
+            simulation_context.step(render=True)
+    print("Reset the object's Z position!")
+            
 
 
 def find_robot(robot_path):
@@ -100,7 +117,7 @@ def reset_robot_pose(robot,simulation_context):
     for _ in range(10):
         simulation_context.step(render=True)
 
-def initialize_simulation_context():
+def initialize_simulation_context() -> SimulationContext:
     """Initialize and reset the simulation context."""
     simulation_context = SimulationContext()
     while simulation_context.is_simulating():

@@ -18,6 +18,16 @@ from matplotlib import pyplot as plt
 #  ])
 
 
+# start_force_control_gripper(robot)
+# check_data = np.array([])
+# for _ in range(150):
+#     # print(robot.get_joint_positions())
+#     check_data = np.append(check_data, robot.get_joint_positions()[6])
+#     simulation_context.step(render=True)
+# print(check_data)
+# stop_force_control_gripper(robot)
+# exit()
+
 
 data_str = """
             0.00288904 0.02554181 0.04742513 0.06869714 0.08931797 0.1092275

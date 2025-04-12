@@ -17,6 +17,7 @@ ROOT_PATH = os.path.dirname(__file__)
 def load_model_from_ckpt(ckpt_path):
     print(f"Loading model from checkpoint: {ckpt_path}")
     payload = torch.load(open(ckpt_path, 'rb'), pickle_module=dill, map_location='cpu')
+    # print(payload.keys())
     cfg = payload['cfg']
 
     # overwrite zarr_path if empty or wrong
@@ -30,13 +31,14 @@ def load_model_from_ckpt(ckpt_path):
     state_dict = payload['state_dicts'].get('ema_model', payload['state_dicts']['model'])
     model.load_state_dict(state_dict)
 
-    # load normalizer
-    dataset: IsaacZarrDataset = hydra.utils.instantiate(cfg.task.dataset)
-    normalizer = dataset.get_normalizer()
+    with open(ROOT_PATH + "/checkpoints/normalizer.pkl", "rb") as f:
+        normalizer = dill.load(f)
+
     model.set_normalizer(normalizer)
 
     model.eval().cuda()
-    return model, cfg, dataset
+    print(f"Model loaded successfully from {ckpt_path}")
+    return model
 
 
 def inference(data_sample,action_steps=4):
@@ -50,10 +52,9 @@ def inference(data_sample,action_steps=4):
     ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/latest.ckpt")
     assert ckpt_path.is_file(), f"Checkpoint not found: {ckpt_path}"
 
-    model, cfg, _ = load_model_from_ckpt(ckpt_path)
+    model = load_model_from_ckpt(ckpt_path)
     if data_sample == None:
         raise ValueError("data_sample is None")
-        # obs_dict = {k: v.unsqueeze(0) for k, v in _[0]['obs'].items()}
     else:
         assert len(data_sample['obs']['agent_pos']) == 6, "agent_pos should be of length 6"
         data_tensor = data_sample
@@ -69,11 +70,6 @@ def inference(data_sample,action_steps=4):
         action = result['action_pred'].squeeze(0).cpu().numpy()
 
     print("Predicted action:", action[0:action_steps])
-    if data_sample['obs']['agent_pose'].shape[0] == 6:
-        data_sample['obs']['point_cloud'] = np.concatenate((data_sample['obs']['point_cloud'][4:], pc), axis=0)
-        data_sample['obs']['agent_pos'] = np.concatenate((data_sample['obs']['agent_pos'][4:], state), axis=0)
-    else:
-        raise ValueError("Invalid shape for data_sample NUM_PADDING_FRAMES")
     return np.array(action[0:action_steps], dtype=np.float32)
 
 
