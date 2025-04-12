@@ -2,13 +2,22 @@
 
 
 
-## Logs 
+## Logs
+
+**[2025/4/13]**
+
+**Progress:** Finish the very first training of Isaac DP3. And it can run in simulation now.
+
+
+
 
 **[2025/3/30]**
 
 **Progress:** Finish recording part and other details. No big problem for now.
 
 **Next Step:** Focusing on Diffusion Part. 
+
+
 
 
 **[2025/2/13]**
