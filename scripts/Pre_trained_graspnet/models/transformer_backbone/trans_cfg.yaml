@@ -1,0 +1,7 @@
+# @package _group_
+num_point: 5120
+nblocks: 4
+nneighbor: 16
+input_dim: 3 # xyz / color
+
+transformer_dim: 512

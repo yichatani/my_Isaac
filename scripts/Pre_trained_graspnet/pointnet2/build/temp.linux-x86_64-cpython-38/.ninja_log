@@ -1,0 +1,19 @@
+# ninja log v5
+1	22092	1719472181585427929	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/group_points.o	fb55501cb536ee4a
+0	22754	1719472182253410223	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/ball_query.o	93d322946712fc7c
+3	22959	1719472182453404924	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/sampling.o	22ededa0ed2a4fc9
+2	23458	1719472182957391569	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/interpolate.o	c3106b077d4c62be
+1	26926	1719472186417299939	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/bindings.o	51eaa72b62808746
+1	32970	1719472192461140091	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/ball_query_gpu.o	74d3dcb1a2ef5523
+2	33504	1719472192993126034	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/interpolate_gpu.o	e90a91be400fbf81
+2	33971	1719472193457113778	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/group_points_gpu.o	85d37839f1a9751d
+1	34947	1719472194441087788	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/sampling_gpu.o	cd78deb37107a3
+3	29304	1719478564081885181	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/group_points.o	f3c0bd48d20f6210
+4	31711	1719478566485822880	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/sampling.o	e64763cff8c93062
+3	31981	1719478566757815832	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/bindings.o	5f3ded3d337af171
+3	32220	1719478566997809613	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/interpolate.o	3a5f4150225e212c
+2	32624	1719478567389799454	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/ball_query.o	3ff1b9ac764e1361
+2	53334	1719478588097670809	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/ball_query_gpu.o	ffbcce8d9a43a5fe
+3	53787	1719478588549807616	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/group_points_gpu.o	cbfd4515fe99f92
+3	56043	1719478590810490246	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/interpolate_gpu.o	476ad798e228d59a
+3	56772	1719478591546711928	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-cpython-38/_ext_src/src/sampling_gpu.o	70fb283a8a5240d4

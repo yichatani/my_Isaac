@@ -32,7 +32,9 @@ from modules.control import control_gripper,finger_angle_to_width, control_robot
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, rgb_and_depth,reset_obj_pose,reset_obj_z
 from modules.record_data import create_episode_file, observing,save_camera_data
 from modules.motion_planning import planning_grasp_path
-from inference_policy.inference import inference
+from inference_policy.inference import inference_policy
+from Pre_trained_graspnet.inference import pretrained_graspnet
+exit() 
 
 ### file_paths
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp_set.usd")
@@ -106,7 +108,7 @@ def main(is_policy=False) -> None:
                 if _ == 0:
                     data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
                 else:
-                    actions = inference(data_sample,action_steps=12)
+                    actions = inference_policy(data_sample,action_steps=12)
                     data_sample = control_robot_by_policy(robot,record_camera_dict,actions,simulation_context,data_sample)
 
         else:
@@ -114,7 +116,9 @@ def main(is_policy=False) -> None:
             for _ in range(10):
                 reset_robot_pose(robot,simulation_context)
                 data_dict = rgb_and_depth(sensor,simulation_context)
-                any_data_dict = any_grasp(data_dict)
+                # any_data_dict = any_grasp(data_dict)
+                any_data_dict = pretrained_graspnet(data_dict, chosen_model='1billion.tar')
+                exit()
                 if any_data_dict is False:
                     break
                 episode_path = create_episode_file(record_camera_dict,height=448,width=448)

@@ -1,0 +1,7 @@
+# ninja log v5
+1	19578	1719224938	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-3.9/_ext_src/src/bindings.o	da314fcc6f7c8ef7
+2	19770	1719224938	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-3.9/_ext_src/src/group_points.o	30c016e6ba412b57
+0	20154	1719224938	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-3.9/_ext_src/src/ball_query.o	c81e4f4f5b1faa43
+2	20293	1719224938	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-3.9/_ext_src/src/cylinder_query.o	1c7444ed98759d46
+3	20438	1719224938	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-3.9/_ext_src/src/interpolate.o	e2c7c0cc6436b264
+3	21201	1719224939	/home/zhy/Grasp_pointcloud/pointnet2/build/temp.linux-x86_64-3.9/_ext_src/src/sampling.o	962e8bc844197373

@@ -1,0 +1,12 @@
+# ninja log v5
+6	13056	1719471723	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/group_points_gpu.o	216ce96fddcd244b
+0	13258	1719471723	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/cylinder_query_gpu.o	8359e9b332839f05
+3	13400	1719471723	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/ball_query_gpu.o	eb8697bec4fb3c55
+5	13863	1719471723	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/interpolate_gpu.o	c78e576bf30f6799
+6	13922	1719471723	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/sampling_gpu.o	7335f2cdfd4d54f3
+1	23411	1719471733	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/group_points.o	6287ddc7c18a9ec0
+1	23712	1719471733	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/sampling.o	ad9d70302fc5877
+0	24119	1719471734	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/cylinder_query.o	1e5a7fc1a4837c5a
+0	24132	1719471734	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/ball_query.o	829d3db8c3ce55cf
+0	24977	1719471734	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/interpolate.o	893a97720463d7f4
+1	28975	1719471738	/home/zhy/Grasp_pointcloud/pointnet2_/build/temp.linux-x86_64-3.6/_ext_src/src/bindings.o	7ff5ea873d5c13fd

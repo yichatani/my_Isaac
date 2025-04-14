@@ -39,7 +39,7 @@ def load_model_from_ckpt(ckpt_path):
     return model
 
 
-def inference(data_sample,action_steps=4):
+def inference_policy(data_sample,action_steps=4):
     """
     Perform inference using the loaded model and configuration.
     Args:
@@ -72,4 +72,4 @@ def inference(data_sample,action_steps=4):
 
 
 if __name__ == "__main__":
-    inference(None)
+    inference_policy(None)

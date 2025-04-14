@@ -1,0 +1,4 @@
+# ninja log v5
+0	484	1733912581292106972	/home/ani/graspness_implementation/knn/build/temp.linux-x86_64-cpython-39/home/ani/graspness_implementation/knn/src/cuda/knn.o	d5e44a4e35f5ddb
+0	6945	1733912587749144702	/home/ani/graspness_implementation/knn/build/temp.linux-x86_64-cpython-39/home/ani/graspness_implementation/knn/src/cpu/knn_cpu.o	a50b7902e67162c9
+0	8374	1733912589178153021	/home/ani/graspness_implementation/knn/build/temp.linux-x86_64-cpython-39/home/ani/graspness_implementation/knn/src/vision.o	e91efea29b55be03
