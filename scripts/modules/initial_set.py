@@ -53,7 +53,7 @@ def reset_obj_pose(prim_paths,simulation_context):
         for _ in range(20):
             simulation_context.step(render=True)
     for _ in range(60):
-            simulation_context.step(render=True)
+        simulation_context.step(render=True)
     print("Reset the objects' positions!")
 
 def reset_obj_z(prim_paths:list,simulation_context) -> None:
@@ -64,7 +64,7 @@ def reset_obj_z(prim_paths:list,simulation_context) -> None:
             position=[
                 obj.get_world_pose()[0][0],
                 obj.get_world_pose()[0][1],
-                random.uniform(0.90,1.00)
+                random.uniform(0.80,0.90)
                 
             ],
             orientation = obj.get_world_pose()[1]
@@ -101,6 +101,7 @@ def initialize_robot(robot_path):
 
     complete_joint_positions = robot.get_joint_positions()
     setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+    # setting_joint_positions = np.array([0, -1.047, 0.349, -0.873, -1.571, 0])
     complete_joint_positions[:6] = setting_joint_positions
     robot.set_joint_positions(complete_joint_positions)
 
@@ -205,14 +206,20 @@ def save_camera_data(camera_key,data_dict, output_dir="./output_data"):
     rgb_image.save(os.path.join(output_dir, f"{camera_key}_rgb_image.png"))
     print(f"RGB image saved to {os.path.join(output_dir, f'{camera_key}_rgb_image.png')}")
     
-    # Save Depth data as normalized grayscale image
-    depth_data = data_dict["depth"]
-    depth_normalized = ((depth_data - np.min(depth_data)) / np.ptp(depth_data) * 255).astype(np.uint8)
-    depth_image = Image.fromarray(depth_normalized)
-    depth_image.save(os.path.join(output_dir, f"{camera_key}_depth_image.png"))
-    print(f"Depth image saved to {os.path.join(output_dir, f'{camera_key}_depth_image.png')}")
+    # # Save Depth data as normalized grayscale image
+    # depth_data = data_dict["depth"]
+    # depth_normalized = ((depth_data - np.min(depth_data)) / np.ptp(depth_data) * 255).astype(np.uint8)
+    # depth_image = Image.fromarray(depth_normalized)
+    # depth_image.save(os.path.join(output_dir, f"{camera_key}_depth_image.png"))
+    # print(f"Depth image saved to {os.path.join(output_dir, f'{camera_key}_depth_image.png')}")
     
-    # Save Depth data as NumPy file
-    np.save(os.path.join(output_dir, f"{camera_key}_depth_data.npy"), depth_data)
-    print(f"Depth data saved to {os.path.join(output_dir, f'{camera_key}_depth_data.npy')}")
+    # # Save Depth data as NumPy file
+    # np.save(os.path.join(output_dir, f"{camera_key}_depth_data.npy"), depth_data)
+    # print(f"Depth data saved to {os.path.join(output_dir, f'{camera_key}_depth_data.npy')}")
 
+def observe_scope(camera,simulation_context):
+    data_dict = rgb_and_depth(camera,simulation_context)
+    save_camera_data("camera",data_dict)
+    for _ in range(100):
+        simulation_context.step(render=True)
+    exit()

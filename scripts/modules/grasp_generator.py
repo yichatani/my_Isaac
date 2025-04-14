@@ -145,8 +145,8 @@ def any_grasp(data_dict):
     # ymin, ymax = -0.29, 0.29
     # zmin, zmax = 0.0, 1.0
 
-    xmin, xmax = -0.5, 0.5
-    ymin, ymax = -0.5, 0.5
+    xmin, xmax = -0.33, 0.4
+    ymin, ymax = -0.21, 0.4
     zmin, zmax = 0.0, 1.0
     lims = [xmin, xmax, ymin, ymax, zmin, zmax]
 

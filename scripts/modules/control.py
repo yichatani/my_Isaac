@@ -50,6 +50,7 @@ def control_gripper(robot, cameras, finger_start, finger_target,   # finger_star
     """
         To control gripper open and close by width
         By position control
+        1 dimension: gripper
     """
     finger_start = width_to_finger_angle(finger_start)
     finger_target = width_to_finger_angle(finger_target)
@@ -57,15 +58,7 @@ def control_gripper(robot, cameras, finger_start, finger_target,   # finger_star
     for position in finger_moves:
         action = ArticulationAction(joint_positions=np.array([position]), joint_indices=np.array([6]))
         robot.apply_action(action)
-        # complete_joint_positions[6] = position
-        # complete_joint_positions[7:10] = [-position] * 3  # left_inner_knuckle_joint, right_inner_knuckle_joint, right_outer_knuckle_joint
-        # complete_joint_positions[10:12] = [position] * 2  # left_inner_finger_joint, right_inner_finger_joint
-        # robot.set_joint_positions(complete_joint_positions)
         simulation_context.step(render=True)
-        # if not recording_event.is_set():
-        #     recording_event.set()
-        #     pause_simulation(recording_event,simulation_context)
-        # simulation_context.step(render=True)
         if is_record:
             recording(robot,cameras,episode_path,simulation_context)
     return complete_joint_positions
@@ -97,21 +90,12 @@ def start_force_control_gripper(robot):
     gripper_dof_index = robot.dof_names.index(gripper_dof_name)
     stage = get_current_stage()
 
-    # print("robot_dof_names:",robot.dof_names)
-    # exit()
-
     set_joint_stiffness_damping(stage, gripper_dof_path, stiffness=0.0, damping=0.0)
-    # simulation_context.step(render=True)
-    # if not recording_event.is_set():
-    #     recording_event.set()
 
     torques = robot.get_applied_joint_efforts()
     torques[gripper_dof_index] = 5     # max torque
     robot.set_joint_efforts(torques)
-    # simulation_context.step(render=True)
-    # # recording_event.set()
-    # if not recording_event.is_set():
-    #     recording_event.set()
+
 
 def stop_force_control_gripper(robot):
     """Stop force control for the gripper"""
@@ -119,53 +103,42 @@ def stop_force_control_gripper(robot):
     gripper_dof_path = "/World/ur10e/robotiq_140_base_link/finger_joint"
     gripper_dof_index = robot.dof_names.index(gripper_dof_name)
     stage = get_current_stage()
-    # complete_joint_positions = robot.get_joint_positions()
-    # robot.set_joint_positions(complete_joint_positions)
 
-    # Save original stiffness & damping
     original_stiffness = 10000.0  # Default, modify if needed
     original_damping = 1000.0  # Default, modify if needed
 
     set_joint_stiffness_damping(stage, gripper_dof_path, stiffness=original_stiffness, damping=original_damping)
-    #robot.set_joint_positions(robot.get_joint_positions())
-    # for _ in range(50):
-    #     simulation_context.step(render=True)
 
     torques = robot.get_applied_joint_efforts()
     torques[gripper_dof_index] = 0.0
     robot.set_joint_efforts(torques)
-    # simulation_context.step(render=True)
-    # # recording_event.set()
-    # if not recording_event.is_set():
-    #     recording_event.set()
 
     print("Gripper reset!")
 
 
 
 def control_robot(robot, cameras, start_position, target_position, simulation_context, episode_path, is_record=True,steps=50)-> np.ndarray:
-    """To control the robot by joint positions"""
+    """To control the robot by joint positions
+        6 dimension: robot joints
+    """
     trajectory = interpolate_joint_positions(start_position, target_position, steps)
     for joint_positions in trajectory:
         complete_joint_positions = robot.get_joint_positions()
         complete_joint_positions[:6] = joint_positions
-        # robot.set_joint_positions(complete_joint_positions)
         action = ArticulationAction(complete_joint_positions)
         robot.apply_action(action)
         simulation_context.step(render=True)
-        # recording_event.set()
-        # if if_record:
-        #     if not recording_event.is_set():
-        #         recording_event.set()
-        #         pause_simulation(recording_event,simulation_context)
-        #     simulation_context.step(render=True)
         if is_record:
             recording(robot, cameras,episode_path,simulation_context)
     return complete_joint_positions
 
 
 def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,simulation_context,data_sample)->dict:
-    """To control the robot by policy"""
+    """To control the robot by policy
+        7 dimension:
+            6 dimension: robot joints
+            1 dimension: gripper
+    """
     assert actions.shape[1] == 7, "Expected 7 DoF action"
     for action in actions:
         complete_joint_positions = robot.get_joint_positions()
@@ -174,3 +147,20 @@ def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,s
         data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
         simulation_context.step(render=True)
     return data_sample
+
+def control_both_robot_gripper(robot, cameras, start_joint_position, target_joint_position, simulation_context, episode_path, is_record=True,steps=50)-> np.ndarray:
+    """"To control the robot and the gripper at the same time
+        7 dimension:
+            6 dimension: robot joints
+            1 dimension: gripper
+    """
+    trajectory = interpolate_joint_positions(start_joint_position, target_joint_position, steps)
+    for joint_positions in trajectory:
+        complete_joint_positions = robot.get_joint_positions()
+        complete_joint_positions[:7] = joint_positions
+        action = ArticulationAction(complete_joint_positions)
+        robot.apply_action(action)
+        simulation_context.step(render=True)
+        if is_record:
+            recording(robot, cameras,episode_path,simulation_context)
+    return complete_joint_positions

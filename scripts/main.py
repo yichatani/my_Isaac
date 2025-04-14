@@ -30,7 +30,7 @@ from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinem
 from modules.grasp_generator import any_grasp
 from modules.control import control_gripper,finger_angle_to_width, control_robot_by_policy
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, rgb_and_depth,reset_obj_pose,reset_obj_z
-from modules.record_data import create_episode_file, observing
+from modules.record_data import create_episode_file, observing,save_camera_data
 from modules.motion_planning import planning_grasp_path
 from inference_policy.inference import inference
 
@@ -117,11 +117,7 @@ def main(is_policy=False) -> None:
                 any_data_dict = any_grasp(data_dict)
                 if any_data_dict is False:
                     break
-
                 episode_path = create_episode_file(record_camera_dict,height=448,width=448)
-                complete_joint_positions = robot.get_joint_positions()
-                complete_joint_positions = control_gripper(robot, record_camera_dict, finger_angle_to_width(complete_joint_positions[6]),any_data_dict["width"],
-                                                        complete_joint_positions,simulation_context,episode_path,is_record=True)
                 planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path)
                 reset_obj_z(obj_prim_paths,simulation_context)
                 if episode_count % 10 == 0:
@@ -134,6 +130,6 @@ def main(is_policy=False) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = True)
+    main(is_policy = False)
 
     

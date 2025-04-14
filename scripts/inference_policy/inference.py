@@ -7,9 +7,7 @@ try:
     import numpy as np
     # from omegaconf import OmegaConf
     from diffusion_policy_3d.policy.dp3 import DP3
-    from diffusion_policy_3d.dataset.my_dataset import IsaacZarrDataset
     from diffusion_policy_3d.common.pytorch_util import dict_apply
-    from diffusion_policy_3d.model.common.normalizer import LinearNormalizer
 except:
     raise ImportError("inference.py import error, please check your environment.")
 ROOT_PATH = os.path.dirname(__file__)
