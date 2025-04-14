@@ -4,6 +4,13 @@
 
 ## Logs
 
+
+**[2025/4/14]**
+
+**Progress:** Add pretrained_graspnet trained by ourselves.
+
+
+
 **[2025/4/13]**
 
 **Progress:** Finish the very first training of Isaac DP3. And it can run in simulation now.
