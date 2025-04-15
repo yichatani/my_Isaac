@@ -22,7 +22,7 @@ import torch.nn.functional as F
 
 import torch
 from torch.utils.data import Dataset
-from utils.data_utils import CameraInfo, transform_point_cloud, create_point_cloud_from_depth_image, get_workspace_mask
+from Pre_trained_graspnet.utils.data_utils import CameraInfo, transform_point_cloud, create_point_cloud_from_depth_image, get_workspace_mask
 import MinkowskiEngine as ME
 import collections.abc as container_abcs
 

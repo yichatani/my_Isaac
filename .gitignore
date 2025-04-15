@@ -1,4 +1,6 @@
 episodes/
-scripts/license/
-scripts/log/
+scripts/license/*
+!scripts/license/.gitkeep
+scripts/log/*
+!scripts/log/.gitkeep
 output_data/

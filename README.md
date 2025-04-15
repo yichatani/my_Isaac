@@ -2,79 +2,6 @@
 
 
 
-## Logs
-
-
-**[2025/4/14]**
-
-**Progress:** Add pretrained_graspnet trained by ourselves.
-
-
-
-**[2025/4/13]**
-
-**Progress:** Finish the very first training of Isaac DP3. And it can run in simulation now.
-
-
-
-
-**[2025/3/30]**
-
-**Progress:** Finish recording part and other details. No big problem for now.
-
-**Next Step:** Focusing on Diffusion Part. 
-
-
-
-
-**[2025/2/13]**
-
-**Progress:** Finish the Grasping System. 
-
-**Next Step:** Recording Data. There are two things I can do now. First, initialize the stage randomly and automatically. Second, write the recording codes to record data. 
-
-
-
-**[2025/2/7]**
-
-**Issues:** The Grasping faces physical problems. The grasp penetrates the objects. 
-
-**Solution:** Change the way of controlling the gripper from position control to effort control. 
-
-
-
-**[2025/2/3]**
-
-**Issues:** The camera's image is distorted. The camera's calibration intrinsic data is something wrong. 
-
-**Solution:** Change the calibration data send into the grasp detector module differently (Shown in the code).
-
-
-
-**[2025/1/25]**
-
-**Issues:** The motion planning method including RRT and Rmpflow does not work very well. 
-
-**Solution:** Deprecate them for now. Use AKsolver directly instead. 
-
-
-
-**[2025/1/20]**
-
-**Issues:** The transformation is not always right. 
-
-**Solution:** Tortured. But getting it right at last. 
-
-
-
-**[2025/1/5]**
-
-**Issues:** I can't find a module(omni.isaac.motion_planning).
-
-**Solution:** Activate it and add its path to let it be found.
-
-
-
 ## Project Overview
 
 A universal and modular grasp-related task simulation platform built in Isaac SIm. 
@@ -82,7 +9,6 @@ A universal and modular grasp-related task simulation platform built in Isaac SI
 
 
 ## Repository Structure
-
 
 
 ```
@@ -184,6 +110,30 @@ For MinkowskiEngine, please refer https://github.com/NVIDIA/MinkowskiEngine
 
 
 
+### Add necessary files/packages:
+
+#### If using Angrasp:
+
+Follow this [[AnyGrasp]](https://github.com/graspnet/anygrasp_sdk) to build the environment and register license. 
+
+Put regular files under `scripts/license` and `scripts/log`
+
+#### If using self trained models:
+
+```bash
+cd scripts/Pre_trained_graspnet/logs
+```
+
+Put trained model here. For example: `scripts/Pre_trained_graspnet/logs/1billion.tar`.
+
+
+#### If running by policy:
+
+```bash
+cd scripts/inference_policy/checkpoints
+```
+Put trained DP3 policy here. For example: `scripts/inference_policy/checkpoints/latest.ckpt`
+
 ### Run:
 
 ```sh
@@ -191,3 +141,74 @@ cd ./scripts
 python main.py
 ```
 
+
+## Logs
+
+
+**[2025/4/14]**
+
+**Progress:** Add pretrained_graspnet trained by ourselves.
+
+
+
+**[2025/4/13]**
+
+**Progress:** Finish the very first training of Isaac DP3. And it can run in simulation now.
+
+
+
+
+**[2025/3/30]**
+
+**Progress:** Finish recording part and other details. No big problem for now.
+
+**Next Step:** Focusing on Diffusion Part. 
+
+
+
+
+**[2025/2/13]**
+
+**Progress:** Finish the Grasping System. 
+
+**Next Step:** Recording Data. There are two things I can do now. First, initialize the stage randomly and automatically. Second, write the recording codes to record data. 
+
+
+
+**[2025/2/7]**
+
+**Issues:** The Grasping faces physical problems. The grasp penetrates the objects. 
+
+**Solution:** Change the way of controlling the gripper from position control to effort control. 
+
+
+
+**[2025/2/3]**
+
+**Issues:** The camera's image is distorted. The camera's calibration intrinsic data is something wrong. 
+
+**Solution:** Change the calibration data send into the grasp detector module differently (Shown in the code).
+
+
+
+**[2025/1/25]**
+
+**Issues:** The motion planning method including RRT and Rmpflow does not work very well. 
+
+**Solution:** Deprecate them for now. Use AKsolver directly instead. 
+
+
+
+**[2025/1/20]**
+
+**Issues:** The transformation is not always right. 
+
+**Solution:** Tortured. But getting it right at last. 
+
+
+
+**[2025/1/5]**
+
+**Issues:** I can't find a module(omni.isaac.motion_planning).
+
+**Solution:** Activate it and add its path to let it be found.

@@ -17,8 +17,8 @@ from models.Pointnet2_backbone.pointnet2_backbone import Pointnet2Backbone
 from models.modules import GraspableNet, SuctionableNet, ApproachNet, CloudCrop, SWADNet
 
 
-from utils.suction_utils import suction_normal
-from utils.label_generation import process_grasp_labels, process_meta_grasp_labels, match_grasp_view_and_label, batch_viewpoint_params_to_matrix
+from Pre_trained_graspnet.utils.suction_utils import suction_normal
+from Pre_trained_graspnet.utils.label_generation import process_grasp_labels, process_meta_grasp_labels, match_grasp_view_and_label, batch_viewpoint_params_to_matrix
 from pointnet2.pointnet2_utils import furthest_point_sample, gather_operation
 from dataset.graspnet_dataset import GraspNetDataset, minkowski_collate_fn
 try:

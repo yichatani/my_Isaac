@@ -13,7 +13,7 @@ import pointnet2.pytorch_utils as pt_utils
 # from pointnet2_.pointnet2_utils import CylinderQueryAndGroup, BallQuery, furthest_point_sample, gather_operation
 from pointnet2_.pointnet2_utils import CylinderQueryAndGroup
 # from utils.model_utils import sample_and_group, query_ball_point, index_points
-from utils.loss_utils import generate_grasp_views, batch_viewpoint_params_to_matrix
+from Pre_trained_graspnet.utils.loss_utils import generate_grasp_views, batch_viewpoint_params_to_matrix
 # from knn.knn_modules import knn
 
 

@@ -1,3 +1,5 @@
 # ninja log v5
 0	10503	1740487700119442481	/home/ani/yc_find_grasp/knn/build/temp.linux-x86_64-cpython-310/home/ani/yc_find_grasp/knn/src/cpu/knn_cpu.o	b8d854d562c3c06a
 1	10821	1740487700435493672	/home/ani/yc_find_grasp/knn/build/temp.linux-x86_64-cpython-310/home/ani/yc_find_grasp/knn/src/vision.o	22041b7ac11eafd
+2	10938	1744697840656398835	/home/ani/astar/my_Isaac/scripts/Pre_trained_graspnet/knn/build/temp.linux-x86_64-cpython-310/home/ani/astar/my_Isaac/scripts/Pre_trained_graspnet/knn/src/cpu/knn_cpu.o	f8b93ca845218539
+2	11072	1744697840792401346	/home/ani/astar/my_Isaac/scripts/Pre_trained_graspnet/knn/build/temp.linux-x86_64-cpython-310/home/ani/astar/my_Isaac/scripts/Pre_trained_graspnet/knn/src/vision.o	449b80333abeb22a

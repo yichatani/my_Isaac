@@ -34,7 +34,6 @@ from modules.record_data import create_episode_file, observing,save_camera_data
 from modules.motion_planning import planning_grasp_path
 from inference_policy.inference import inference_policy
 from Pre_trained_graspnet.inference import pretrained_graspnet
-exit() 
 
 ### file_paths
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp_set.usd")
@@ -63,11 +62,11 @@ def handle_signal(signum, frame)-> None:
     sys.exit(0)
 
 ############ main
-def main(is_policy=False) -> None:
+def main(is_policy=False, self_trained_model=None) -> None:
     """Main function to run the simulation.
     Args:
         is_policy (bool): Flag to indicate if using policy for control.
-
+        self_trained_model (bool): Flag to indicate if using a self-trained model.
     """
     # Open the stage
     stage = open_stage(usd_path=usd_file_path)
@@ -117,8 +116,13 @@ def main(is_policy=False) -> None:
                 reset_robot_pose(robot,simulation_context)
                 data_dict = rgb_and_depth(sensor,simulation_context)
                 # any_data_dict = any_grasp(data_dict)
-                any_data_dict = pretrained_graspnet(data_dict, chosen_model='1billion.tar')
-                exit()
+                if self_trained_model is not None:
+                    assert self_trained_model=="1billion.tar" or "mega.tar", "self_trained_model invalid"
+                    print(f"<<<Using self-trained model: {self_trained_model}>>>")
+                    any_data_dict = pretrained_graspnet(data_dict, chosen_model=self_trained_model)
+                else:
+                    print(f"<<<Using AnyGrasp>>>")
+                    any_data_dict = any_grasp(data_dict)
                 if any_data_dict is False:
                     break
                 episode_path = create_episode_file(record_camera_dict,height=448,width=448)
@@ -135,5 +139,7 @@ def main(is_policy=False) -> None:
 if __name__ == "__main__":
     
     main(is_policy = False)
+    # main(is_policy = False, self_trained_model="1billion.tar")
+    
 
     
