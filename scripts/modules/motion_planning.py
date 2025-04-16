@@ -87,7 +87,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
 
     start_force_control_gripper(robot)
     # select 16 steps to record
-    selected_steps = np.linspace(0, 59, 16).astype(int)
+    selected_steps = np.linspace(0, 59, 20).astype(int)
     for _ in range(60):
         simulation_context.step(render = True)
         if _ in selected_steps:

@@ -70,11 +70,7 @@ def recording(robot, cameras, episode_path, simulation_context):
             for cam in cameras:
                 f.create_dataset(f"{cam}/rgb", shape=(0, 128, 128, 3), maxshape=(None, 128, 128, 3), dtype='uint8')
                 f.create_dataset(f"{cam}/depth", shape=(0, 128, 128), maxshape=(None, 128, 128), dtype='f4')
-                # f.create_dataset(f"{cam}/depth", shape=(0, 128, 128), maxshape=(None, 128, 128), dtype='uint16')
-                f.create_dataset(f"{cam}/D_min", shape=(0,), maxshape=(None,), dtype='f4')
-                f.create_dataset(f"{cam}/D_max", shape=(0,), maxshape=(None,), dtype='f4')
-
-
+        
         index = f["index"].shape[0]
         f["index"].resize((index + 1, 1))
         f["index"][-1] = index
@@ -93,12 +89,15 @@ def recording(robot, cameras, episode_path, simulation_context):
             f["action"][-1] = action
 
         f["agent_pos"].resize((index + 1, 7))
+
+        # Assume current state = previous action (robot reaches goal perfectly)
+        # At t=0, assume robot is static at action[0]
         if index > 0:
             f["agent_pos"][-1] = f["action"][-2]
         else:
             # This should corerespond to the the observing function
             # f["agent_pos"][-1] = f["action"][-1]
-            f["agent_pos"][-1] = np.zeros(7)
+            f["agent_pos"][-1] = f["action"][-1]
 
         for cam in cameras.keys():
             data_dict = rgb_and_depth(cameras[cam], simulation_context)
@@ -106,26 +105,11 @@ def recording(robot, cameras, episode_path, simulation_context):
             rgb = data_dict["rgb"].astype(np.uint8)
             depth_raw = data_dict["depth"]
 
-            # Clip to valid finite range
-            valid_depth = depth_raw[np.isfinite(depth_raw)]
-            D_min, D_max = np.percentile(valid_depth, [0, 100])
-
-            # Save D_min and D_max for this frame and camera
-            f[f"{cam}/D_min"].resize((index + 1,))
-            f[f"{cam}/D_min"][-1] = D_min
-
-            f[f"{cam}/D_max"].resize((index + 1,))
-            f[f"{cam}/D_max"][-1] = D_max
-
-            # Encode depth
-            # depth_uint16 = ((np.clip(depth_raw, D_min, D_max) - D_min) / (D_max - D_min) * 65535).astype(np.uint16)
-            depth_uint16 = depth_raw
-
             f[f"{cam}/rgb"].resize((index + 1, *rgb.shape))
             f[f"{cam}/rgb"][-1] = rgb
 
-            f[f"{cam}/depth"].resize((index + 1, *depth_uint16.shape))
-            f[f"{cam}/depth"][-1] = depth_uint16
+            f[f"{cam}/depth"].resize((index + 1, *depth_raw.shape))
+            f[f"{cam}/depth"][-1] = depth_raw
 
         f.flush()
         print(f"Recording frame {index} done.")
@@ -133,7 +117,7 @@ def recording(robot, cameras, episode_path, simulation_context):
 
 def observing(robot, cameras ,simulation_context, data_sample=None):
     assert robot is not None, "Failed to initialize Articulation"
-    NUM_PADDING_FRAMES = 6
+    NUM_PADDING_FRAMES = 3
     data_dict = rgb_and_depth(cameras['front'], simulation_context)
     data_dict["rgb"], data_dict["depth"] = resize_images(data_dict["rgb"], data_dict["depth"])
     rgb = data_dict["rgb"].astype(np.uint8)
@@ -146,7 +130,8 @@ def observing(robot, cameras ,simulation_context, data_sample=None):
             pc = preprocess_point_cloud(pc_raw, use_cuda=True)
             for _ in range(NUM_PADDING_FRAMES):
                 pc_list.append(pc)
-                state_list.append(np.zeros(7))
+                # state_list.append(np.zeros(7))
+                state_list.append(record_robot_7dofs(robot))
             pc_arr = np.stack(pc_list, axis=0).astype('float32')    
             state_arr = np.stack(state_list, axis=0).astype('float32')
             data_sample = {'obs': 
@@ -154,7 +139,6 @@ def observing(robot, cameras ,simulation_context, data_sample=None):
                     'agent_pos': state_arr.astype(np.float32),
                     'point_cloud': pc_arr.astype(np.float32),
                 },
-                # 'action': sample['action'].astype(np.float32)
                 }
             return data_sample
         else:

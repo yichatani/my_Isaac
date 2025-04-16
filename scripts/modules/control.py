@@ -58,7 +58,8 @@ def control_gripper(robot, cameras, finger_start, finger_target,   # finger_star
     for position in finger_moves:
         action = ArticulationAction(joint_positions=np.array([position]), joint_indices=np.array([6]))
         robot.apply_action(action)
-        simulation_context.step(render=True)
+        for _ in range(5):
+            simulation_context.step(render=True)
         if is_record:
             recording(robot,cameras,episode_path,simulation_context)
     return complete_joint_positions
@@ -127,7 +128,8 @@ def control_robot(robot, cameras, start_position, target_position, simulation_co
         complete_joint_positions[:6] = joint_positions
         action = ArticulationAction(complete_joint_positions)
         robot.apply_action(action)
-        simulation_context.step(render=True)
+        for _ in range(5):
+            simulation_context.step(render=True)
         if is_record:
             recording(robot, cameras,episode_path,simulation_context)
     return complete_joint_positions
@@ -145,7 +147,8 @@ def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,s
         complete_joint_positions[:7] = action
         robot.apply_action(ArticulationAction(joint_positions=complete_joint_positions))
         data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
-        simulation_context.step(render=True)
+        for _ in range(5):
+            simulation_context.step(render=True)
     return data_sample
 
 def control_both_robot_gripper(robot, cameras, start_joint_position, target_joint_position, simulation_context, episode_path, is_record=True,steps=50)-> np.ndarray:
@@ -160,7 +163,8 @@ def control_both_robot_gripper(robot, cameras, start_joint_position, target_join
         complete_joint_positions[:7] = joint_positions
         action = ArticulationAction(complete_joint_positions)
         robot.apply_action(action)
-        simulation_context.step(render=True)
+        for _ in range(5):
+            simulation_context.step(render=True)
         if is_record:
             recording(robot, cameras,episode_path,simulation_context)
     return complete_joint_positions

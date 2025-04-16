@@ -97,7 +97,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
     episode_count = 0
     # while True:
-    for _ in range(800):
+    for _ in range(300):
                     
         if is_policy:
             reset_obj_pose(obj_prim_paths,simulation_context)
@@ -107,7 +107,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
                 if _ == 0:
                     data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
                 else:
-                    actions = inference_policy(data_sample,action_steps=12)
+                    actions = inference_policy(data_sample,obs_steps=3,action_steps=6)
                     data_sample = control_robot_by_policy(robot,record_camera_dict,actions,simulation_context,data_sample)
 
         else:
@@ -138,7 +138,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = False)
+    main(is_policy = True)
     # main(is_policy = False, self_trained_model="1billion.tar")
     
 

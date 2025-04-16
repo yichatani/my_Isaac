@@ -39,7 +39,7 @@ def load_model_from_ckpt(ckpt_path):
     return model
 
 
-def inference_policy(data_sample,action_steps=4):
+def inference_policy(data_sample,obs_steps=3,action_steps=5):
     """
     Perform inference using the loaded model and configuration.
     Args:
@@ -54,11 +54,11 @@ def inference_policy(data_sample,action_steps=4):
     if data_sample == None:
         raise ValueError("data_sample is None")
     else:
-        assert len(data_sample['obs']['agent_pos']) == 6, "agent_pos should be of length 6"
+        assert len(data_sample['obs']['agent_pos']) == obs_steps, "agent_pos should be of length obs_steps"
         data_tensor = data_sample
         data_tensor['obs'] = {
-            'agent_pos': torch.tensor(data_tensor['obs']['agent_pos']),        # -> [1, 6, 7]
-            'point_cloud': torch.tensor(data_tensor['obs']['point_cloud'])     # -> [1, 6, N, 6]
+            'agent_pos': torch.tensor(data_tensor['obs']['agent_pos']),        # -> [1, obs_steps, 7]
+            'point_cloud': torch.tensor(data_tensor['obs']['point_cloud'])     # -> [1, obs_steps, N, 6]
         }
         obs_dict = {k: v.unsqueeze(0) for k, v in data_tensor['obs'].items()}
     obs_dict = dict_apply(obs_dict, lambda x: x.cuda())
