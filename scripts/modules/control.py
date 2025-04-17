@@ -58,7 +58,7 @@ def control_gripper(robot, cameras, finger_start, finger_target,   # finger_star
     for position in finger_moves:
         action = ArticulationAction(joint_positions=np.array([position]), joint_indices=np.array([6]))
         robot.apply_action(action)
-        for _ in range(5):
+        for _ in range(1):
             simulation_context.step(render=True)
         if is_record:
             recording(robot,cameras,episode_path,simulation_context)
@@ -94,7 +94,7 @@ def start_force_control_gripper(robot):
     set_joint_stiffness_damping(stage, gripper_dof_path, stiffness=0.0, damping=0.0)
 
     torques = robot.get_applied_joint_efforts()
-    torques[gripper_dof_index] = 5     # max torque
+    torques[gripper_dof_index] = 1     # max torque
     robot.set_joint_efforts(torques)
 
 
@@ -128,7 +128,7 @@ def control_robot(robot, cameras, start_position, target_position, simulation_co
         complete_joint_positions[:6] = joint_positions
         action = ArticulationAction(complete_joint_positions)
         robot.apply_action(action)
-        for _ in range(5):
+        for _ in range(1):
             simulation_context.step(render=True)
         if is_record:
             recording(robot, cameras,episode_path,simulation_context)
@@ -147,7 +147,7 @@ def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,s
         complete_joint_positions[:7] = action
         robot.apply_action(ArticulationAction(joint_positions=complete_joint_positions))
         data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
-        for _ in range(5):
+        for _ in range(3):
             simulation_context.step(render=True)
     return data_sample
 
@@ -163,7 +163,7 @@ def control_both_robot_gripper(robot, cameras, start_joint_position, target_join
         complete_joint_positions[:7] = joint_positions
         action = ArticulationAction(complete_joint_positions)
         robot.apply_action(action)
-        for _ in range(5):
+        for _ in range(3):
             simulation_context.step(render=True)
         if is_record:
             recording(robot, cameras,episode_path,simulation_context)

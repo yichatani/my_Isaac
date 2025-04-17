@@ -97,7 +97,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
     signal.signal(signal.SIGINT, handle_signal)  # Graceful exit on Ctrl+C
     episode_count = 0
     # while True:
-    for _ in range(300):
+    for _ in range(400):
                     
         if is_policy:
             reset_obj_pose(obj_prim_paths,simulation_context)
@@ -138,7 +138,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = True)
+    main(is_policy = False)
     # main(is_policy = False, self_trained_model="1billion.tar")
     
 

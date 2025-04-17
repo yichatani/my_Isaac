@@ -3,6 +3,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 from omni.isaac.core.utils.stage import get_current_stage# type: ignore
+from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, euler_angles_to_quats,quats_to_euler_angles # type: ignore
 from omni.isaac.core.prims import XFormPrim # type: ignore
 import omni.usd # type: ignore
 from pxr import Usd, UsdGeom # type: ignore
@@ -163,6 +164,28 @@ def camera_extrinsic(camera_path, baselink_path):
 
     return T_front_camera_2_baselink_new
 
+
+def get_end_effector_pose()-> np.ndarray[6]:
+    """
+    Get the end effector pose of the robot.
+    The pose is represented as a 6D vector containing translation and rotation.
+    The rotation is represented as Euler angles (roll, pitch, yaw).
+    """
+    transform_stage = Usd.Stage.Open(usd_file_path)
+
+    frame_tool0 = transform_stage.GetPrimAtPath(tool0_path)
+    xformable_tool0 = UsdGeom.Xformable(frame_tool0)
+    T_tool0_2_baselink = xformable_tool0.GetLocalTransformation()
+    T_tool0_2_baselink = np.array(T_tool0_2_baselink).T
+
+    T_end_effector_translation = T_tool0_2_baselink[:3,3]
+    T_end_effector_rotation = T_tool0_2_baselink[:3,:3]
+    T_end_effector_orientation = rot_matrices_to_quats(T_end_effector_rotation)
+    T_end_effector_euler = quats_to_euler_angles(T_end_effector_orientation)
+    
+    T_end_pose = np.concatenate((T_end_effector_translation, T_end_effector_euler), axis=0)
+
+    return T_end_pose
 
 def transform_terminator(any_data_dict):
     

@@ -186,14 +186,14 @@ def any_grasp(data_dict):
         print('No good Grasp detected after collision detection!')
         return False
 
-    # target_grasp_pose_to_cam = define_grasp_pose(gg[random.randint(0, 2)])
-    target_grasp_pose_to_cam = define_grasp_pose(gg[0])
+    target_pose = gg[random.randint(0, 1)]
+    target_grasp_pose_to_cam = define_grasp_pose(target_pose)
 
     data_dict = {
-        "width":gg[0].width,
-        "depth":gg[0].depth,
+        "width":target_pose.width,
+        "depth":target_pose.depth,
         "T":target_grasp_pose_to_cam,
-        "score":gg[0].score
+        "score":target_pose.score
     }
 
     return data_dict

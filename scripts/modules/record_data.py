@@ -6,6 +6,7 @@ import numpy as np
 import cv2
 from modules.initial_set import rgb_and_depth,save_camera_data
 from modules.policy_data import reconstruct_pointcloud, preprocess_point_cloud
+from modules.transform import get_end_effector_pose
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR + "/../../episodes")
@@ -50,8 +51,8 @@ def create_episode_file(cameras, height, width):
                 #                  dtype=np.uint16, compression="lzf")
 
                 # Per-frame D_min and D_max
-                f.create_dataset(f"{cam}/D_min", shape=(1,), maxshape=(None,), dtype=np.float32, compression="lzf")
-                f.create_dataset(f"{cam}/D_max", shape=(1,), maxshape=(None,), dtype=np.float32, compression="lzf")
+                # f.create_dataset(f"{cam}/D_min", shape=(1,), maxshape=(None,), dtype=np.float32, compression="lzf")
+                # f.create_dataset(f"{cam}/D_max", shape=(1,), maxshape=(None,), dtype=np.float32, compression="lzf")
 
     print(f"Episode file created: {episode_path}")
     return episode_path
@@ -77,7 +78,8 @@ def recording(robot, cameras, episode_path, simulation_context):
 
         # Record action
         try:
-            action = record_robot_7dofs(robot)
+            # action = record_robot_7dofs(robot)
+            action = record_robot_end_effector_pose(robot)
             if action is None or len(action) != 7:
                 raise ValueError("Invalid action data received")
         except Exception as e:
@@ -131,7 +133,8 @@ def observing(robot, cameras ,simulation_context, data_sample=None):
             for _ in range(NUM_PADDING_FRAMES):
                 pc_list.append(pc)
                 # state_list.append(np.zeros(7))
-                state_list.append(record_robot_7dofs(robot))
+                # state_list.append(record_robot_7dofs(robot))
+                state_list.append(record_robot_end_effector_pose(robot))
             pc_arr = np.stack(pc_list, axis=0).astype('float32')    
             state_arr = np.stack(state_list, axis=0).astype('float32')
             data_sample = {'obs': 
@@ -147,7 +150,8 @@ def observing(robot, cameras ,simulation_context, data_sample=None):
     else:
         if pc_raw.shape[0] > 32:
             pc = preprocess_point_cloud(pc_raw, use_cuda=True)
-            state = record_robot_7dofs(robot)
+            # state = record_robot_7dofs(robot)
+            state = record_robot_end_effector_pose(robot)
             if state.ndim == 1:
                 state = state.reshape(1, -1)  # shape: (1, 7)
             pc = pc.reshape(1, *pc.shape)
@@ -162,7 +166,6 @@ def observing(robot, cameras ,simulation_context, data_sample=None):
             return data_sample
 
    
-
 def record_robot_7dofs(robot):
     """
         Record ur10e's 6 DOF and finger_joint positions
@@ -176,6 +179,19 @@ def record_robot_7dofs(robot):
     
     return robot_7dofs
 
+def record_robot_end_effector_pose(robot) -> np.ndarray[7]:
+    """
+        Record ur10e's end effector pose
+        Add gripper width
+        6 DOF + 1 gripper width
+    """
+    end_effector_pose = get_end_effector_pose()
+    complete_joint_positions = robot.get_joint_positions()
+    end_effector_pose = np.concatenate((end_effector_pose, [complete_joint_positions[6]]), axis=0)
+    assert end_effector_pose.shape == (7,), f"Expected shape (7,), got {end_effector_pose.shape}"
+    print("end_effector_pose:",end_effector_pose)
+    
+    return end_effector_pose
 
 ############################################################################
 ############################################################################
