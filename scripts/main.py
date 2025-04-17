@@ -29,7 +29,8 @@ from omni.isaac.core import World # type: ignore
 from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinematicsSolver
 from modules.grasp_generator import any_grasp
 from modules.control import control_gripper,finger_angle_to_width, control_robot_by_policy
-from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, rgb_and_depth,reset_obj_pose,reset_obj_z
+from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, \
+    rgb_and_depth,reset_obj_pose,reset_obj_z,check_obj_pose_err
 from modules.record_data import create_episode_file, observing,save_camera_data
 from modules.motion_planning import planning_grasp_path
 from inference_policy.inference import inference_policy
@@ -113,6 +114,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
         else:
             reset_obj_pose(obj_prim_paths,simulation_context)
             for _ in range(10):
+                if check_obj_pose_err(obj_prim_paths):
+                    reset_obj_pose(obj_prim_paths,simulation_context)
                 reset_robot_pose(robot,simulation_context)
                 data_dict = rgb_and_depth(sensor,simulation_context)
                 # any_data_dict = any_grasp(data_dict)
@@ -127,10 +130,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
                     break
                 episode_path = create_episode_file(record_camera_dict,height=448,width=448)
                 planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path)
-                reset_obj_z(obj_prim_paths,simulation_context)
                 if episode_count % 10 == 0:
                     torch.cuda.empty_cache()
-                
                 print(f"Completed {episode_count} episodes.")
                 episode_count += 1
                 # Clean

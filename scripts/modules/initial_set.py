@@ -59,6 +59,17 @@ def reset_obj_pose(prim_paths,simulation_context):
         simulation_context.step(render=True)
     print("Reset the objects' positions!")
 
+
+def check_obj_pose_err(prim_paths:list) -> None:
+    for prim_path in prim_paths:
+        obj = XFormPrim(prim_path)
+        if obj.get_world_pose()[0][2] < 1.00 and \
+            0.6 < obj.get_world_pose()[0][0] < 0.9 and \
+            -0.11 < obj.get_world_pose()[0][1] < 0.4: 
+            return False
+    print("All objects are in the wrong position!")
+    return True
+
 def reset_obj_z(prim_paths:list,simulation_context) -> None:
     for prim_path in prim_paths:
         obj = XFormPrim(prim_path)
