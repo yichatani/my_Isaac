@@ -1,10 +1,10 @@
 # my_Isaac
 
-
+>This is the latest version. 
 
 ## Project Overview
 
-A universal and modular grasp-related task simulation platform built in Isaac SIm. 
+A universal and modular grasp-related task simulation platform built in Isaac Sim. 
 
 
 
@@ -22,12 +22,7 @@ my_Isaac/
 │   │   ├── transform.py          # Coordinate Transform 
 │   │   └── record_data.py        # Collect data for training
 │   └── ...
-├── controller/                   # yaml file
-│   ├── ur10e_description.yaml
-│   └── rrt_config.yaml
-├── urdf/                         # urdf file
-│   └── ur10e_gripper.urdf
-├── usd/
+├── ur10e_grasp.usd
 └── ...
 ```
 
