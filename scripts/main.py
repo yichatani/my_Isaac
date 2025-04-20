@@ -57,15 +57,13 @@ from omni.isaac.core.utils.extensions import get_extension_path_from_name # type
 from omni.isaac.core.utils.types import ArticulationAction # type: ignore
 from omni.isaac.core.articulations import ArticulationView # type: ignore
 from omni.isaac.core import World # type: ignore
-from pxr import Usd, Sdf
 from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinematicsSolver
 from modules.grasp_generator import any_grasp
 from modules.control import control_robot_by_policy
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, \
     rgb_and_depth,reset_obj_pose,check_obj_pose_err
 from modules.record_data import create_episode_file, observing
-from modules.motion_planning import planning_grasp_path, T_pose_2_joints
-from modules.transform import get_local_transform, get_world_transform
+from modules.motion_planning import planning_grasp_path
 from inference_policy.inference import inference_policy
 # from Pre_trained_graspnet.inference import pretrained_graspnet
 
@@ -108,37 +106,18 @@ def main(is_policy=False, self_trained_model=None) -> None:
     open_stage(usd_path=usd_file_path)
     stage = get_current_stage()
     print("Stage opened.")
-    # Initialize the world and simulation context
     simulation_context = initialize_simulation_context()
     
     # Initial robot
-    robot = initialize_robot(robot_path)
-    for _ in range(5):
-        simulation_context.step(render=True)
-    
-    tool0_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0"
-    robotiqpad_R_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/Robotiq_2F_140_config/right_inner_finger"
-    # T_baselink_2_tool0 = get_local_transform(tool0_path)
-    # print("T_baselink_2_tool0:\n", T_baselink_2_tool0)
-
-    T_world_2_tool0 = get_world_transform(tool0_path)
-    print("T_world_2_tool0:\n",T_world_2_tool0)
-    T_world_2_Rpad = get_local_transform(robotiqpad_R_path)
-    print("T_world_2_Rpad:\n",T_world_2_Rpad)
-
-    exit()
-    
+    initial_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+    ending_joint_positions = np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0])
+    robot = initialize_robot(robot_path,initial_joint_positions,stage,simulation_context)
     LulaKSolver = LulaKinematicsSolver(
         robot_description_path=yaml_path,
         urdf_path=urdf_path
     )
     # print("KSolver get_all_frame_names:",LulaKSolver.get_all_frame_names())
     AKSolver = ArticulationKinematicsSolver(robot,LulaKSolver,"tool0")
-
-    # T_joint_positions = T_pose_2_joints(T_baselink_2_tool0[:3,3],T_baselink_2_tool0[:3,:3],AKSolver)
-    # # setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
-    # print("T_joint_positions:", T_joint_positions)
-    # exit()
 
     global camera_paths
     sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
@@ -184,7 +163,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
                 if any_data_dict is False:
                     break
                 episode_path = create_episode_file(record_camera_dict,height=448,width=448)
-                planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path)
+                planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path,
+                                    initial_joint_positions,ending_joint_positions)
                 if episode_count % 10 == 0:
                     torch.cuda.empty_cache()
                 print(f"Completed {episode_count} episodes.")

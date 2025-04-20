@@ -13,28 +13,15 @@ from gsnet import AnyGrasp # type: ignore
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 from modules.transform import create_rotation_matrix
 
-
-############ AnyGrasp Parts
 parser = argparse.ArgumentParser()
-# parser.add_argument('--checkpoint_path', default=os.path.join(ROOT_DIR, "../log/checkpoint_detection.tar"), help='Model checkpoint path')
-#parser.add_argument('--checkpoint_path', default=os.path.join(ROOT_DIR, "../log/mega.tar"), help='Model checkpoint path')
-parser.add_argument('--max_gripper_width', type=float, default=0.14, help='Maximum gripper width (<=0.1m)')
-# parser.add_argument('--gripper_height', type=float, default=0.035, help='Gripper height')
-# parser.add_argument('--top_down_grasp', action='store_true', help='Output top-down grasps.')
-# parser.add_argument('--debug', action='store_true', help='Enable debug mode')
 cfgs = parser.parse_args()
 cfgs.checkpoint_path = os.path.join(ROOT_DIR, "../log/checkpoint_detection.tar")
 cfgs.gripper_height = 0.035
-cfgs.max_gripper_width = max(0, min(0.14, cfgs.max_gripper_width))
+cfgs.max_gripper_width = 0.14
 cfgs.top_down_grasp = True
 cfgs.debug = True
 anygrasp = AnyGrasp(cfgs)
 anygrasp.load_net()
-############
-
-# with open(os.path.join(ROOT_DIR + '/model_config.yaml'), 'r') as f:
-#     model_config = yaml.load(f, Loader=yaml.FullLoader)
-
 
 def define_grasp_pose(grasp_pose):      # Set for Anygrasp transform case
     """
@@ -131,7 +118,14 @@ def remove_distortion(camera_matrix,dist_coeffs,colors,depths):
     return undistorted_colors, undistorted_depths
 
 def any_grasp(data_dict):
-    
+    """
+    Generate grasps using AnyGrasp.
+    Args:
+        data_dict (dict): Dictionary containing RGB and depth data.
+    Returns:
+        dict: Dictionary containing grasp information.
+    """
+    # Extract RGB and depth data from the dictionary
     colors = data_dict["rgb"] / 255.0
     depths = data_dict["depth"]
 
@@ -139,11 +133,6 @@ def any_grasp(data_dict):
     camera_matrix = [[1281.77, 0.0, 960], [0.0, 1281.77, 540], [0.0, 0.0, 1.0]]
     ((fx,_,cx),(_,fy,cy),(_,_,_)) = camera_matrix
     scale = 1.0
-
-    # set workspace to filter output grasps
-    # xmin, xmax = -0.29, 0.29
-    # ymin, ymax = -0.29, 0.29
-    # zmin, zmax = 0.0, 1.0
 
     xmin, xmax = -0.33, 0.4
     ymin, ymax = -0.21, 0.4
@@ -179,7 +168,7 @@ def any_grasp(data_dict):
     gg = gg.nms().sort_by_score()
     gg = gg[0:20]
     # print(gg)
-    vis_grasps(gg,cloud)
+    # vis_grasps(gg,cloud)
     # exit()
 
     if len(gg) == 0 or gg[0].score < 0.10:

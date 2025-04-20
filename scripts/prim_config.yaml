@@ -1,7 +1,7 @@
 robot_path: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140"
-
-# Robotiq_2F_140_config/right_inner_finger_pad_joint
-# right_inner_finger_pad_joint
+tool0_path: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0"
+baselink_path: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/base_link"
+robotiqpad_R_path: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/Robotiq_2F_140_config/right_inner_finger"
 
 camera_paths:
   sensor: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0/Camera"
@@ -10,27 +10,14 @@ camera_paths:
   front: "/World/front"
 
 obj_prim_paths:
-  - path: "/rubiks_cube"
-    enabled: false
-  - path: "/Lemon_01"
-    enabled: false
-  - path: "/_02_master_chef_can"
-    enabled: false
-  - path: "/_09_gelatin_box"
-    enabled: false
-  - path: "/Android_Figure_Panda"
-    enabled: false
   - path: "/nvidia_cube"
     enabled: false
   - path: "/SM_Mug_A2"
-    enabled: true
-  - path: "/_05_tomato_soup_can"
     enabled: false
   - path: "/_11_banana"
     enabled: false
-  - path: "/Office_Depot_Canon"
+  - path: "/_35_power_drill"
     enabled: false
-  - path: "/_10_potted_meat_can"
-    enabled: false
-  - path: "/_08_pudding_box"
-    enabled: false
+  - path: "/multi_color_cube_instanceable"
+    enabled: true
+

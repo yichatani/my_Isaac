@@ -1,21 +1,14 @@
 import os
-import math
 import time
 import omni.usd # type: ignore
 from PIL import Image
 import numpy as np
 import random
-import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
-from pxr import Usd, UsdGeom # type: ignore
 from omni.isaac.core.prims import XFormPrim # type: ignore
 from omni.isaac.core.articulations import Articulation # type: ignore
 from omni.isaac.core.utils.prims import is_prim_path_valid # type: ignore
 from omni.isaac.core.simulation_context import SimulationContext # type: ignore
-import omni.replicator.core as rep # type: ignore
-from omni.isaac.core.utils.stage import get_current_stage # type: ignore
-from omni.isaac.core.utils.rotations import euler_angles_to_quat # type: ignore
-from pxr import UsdPhysics # type: ignore
 from omni.isaac.sensor import Camera # type: ignore
 
 
@@ -25,9 +18,23 @@ def get_all_prim_paths(stage):
     prim_paths = []
     for prim in stage.Traverse():
         prim_paths.append(prim.GetPath().pathString)  # Get prim path as string
-
     for path in prim_paths:
         print(path)
+
+def find_joint_prim_path_by_name(dof_name: str, root_path="/World"):
+    """
+    Find the joint prim path by its name in the USD stage.
+    Args:
+        dof_name (str): The name of the joint to search for.
+        root_path (str): The root path to start the search from.
+    Returns:
+        str: The prim path of the joint if found, otherwise None.
+    """
+    stage = omni.usd.get_context().get_stage()
+    for prim in stage.Traverse():
+        if prim.GetName() == dof_name and prim.GetTypeName() == "PhysicsRevoluteJoint":
+            return prim.GetPath().pathString
+    return None
 
 
 def reset_obj_pose(prim_paths,simulation_context):
@@ -48,14 +55,13 @@ def reset_obj_pose(prim_paths,simulation_context):
                 # random.uniform(0.8,0.85)
                 random.uniform(0.6,0.9),
                 random.uniform(-0.11,0.4),
-                random.uniform(0.90,1.00)
-                
+                random.uniform(0.90,1.00)             
             ],
             orientation = tuple(R.from_euler('xyz', euler_angles).as_quat())
         )
         for _ in range(20):
             simulation_context.step(render=True)
-    for _ in range(60):
+    for _ in range(100):
         simulation_context.step(render=True)
     print("Reset the objects' positions!")
 
@@ -97,7 +103,7 @@ def find_robot(robot_path):
         print(f"Robot not found at: {robot_path}")
         exit(1)
 
-def initialize_robot(robot_path):
+def initialize_robot(robot_path:str,initial_joint_positions:np.array,stage,simulation_context):
     """Initialize the robot articulation."""
 
     robot = Articulation(prim_path=robot_path)
@@ -111,14 +117,18 @@ def initialize_robot(robot_path):
     robot.set_solver_velocity_iteration_count(64)
     print("Available DOF Names:", robot.dof_names)
 
-    print(f"Initial joint positions: {robot.dof_names}")
-
     complete_joint_positions = robot.get_joint_positions()
-    setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
-    # setting_joint_positions = np.array([0, -1.047, 0.349, -0.873, -1.571, 0])
+    setting_joint_positions = initial_joint_positions
     complete_joint_positions[:6] = setting_joint_positions
     robot.set_joint_positions(complete_joint_positions)
+    for _ in range(5):
+        simulation_context.step(render=True)
 
+    from modules.control import set_joint_stiffness_damping
+    for dof in robot.dof_names[:7]:
+        set_joint_stiffness_damping(stage, find_joint_prim_path_by_name(dof), stiffness=10000.0, damping=1000.0)
+    # for dof in robot.dof_names[10:12]: #skip 'left_outer_finger_joint', 'right_outer_finger_joint', 'left_inner_finger_pad_joint', 'right_inner_finger_pad_joint'
+    #     set_joint_stiffness_damping(stage, find_joint_prim_path_by_name(dof), stiffness=10000.0, damping=1000.0)
     return robot
 
 def reset_robot_pose(robot,simulation_context):
@@ -230,10 +240,3 @@ def save_camera_data(camera_key,data_dict, output_dir="./output_data"):
     # # Save Depth data as NumPy file
     # np.save(os.path.join(output_dir, f"{camera_key}_depth_data.npy"), depth_data)
     # print(f"Depth data saved to {os.path.join(output_dir, f'{camera_key}_depth_data.npy')}")
-
-def observe_scope(camera,simulation_context):
-    data_dict = rgb_and_depth(camera,simulation_context)
-    save_camera_data("camera",data_dict)
-    for _ in range(100):
-        simulation_context.step(render=True)
-    exit()
