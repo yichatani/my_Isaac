@@ -14,8 +14,6 @@ DATA_DIR = os.path.join(ROOT_DIR + "/../../episodes")
 
 with open(ROOT_DIR + '/../prim_config.yaml', 'r') as file:
     config = yaml.safe_load(file)
-robot_path = config['robot_path']
-camera_paths = config['camera_paths']
 obj_prim_paths = [
     item['path'] for item in config['obj_prim_paths'] if item.get('enabled', False)
 ]
@@ -79,24 +77,29 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
     if initial_width > 0.14:
         initial_width = 0.14
     target_up20_joint_positions = np.append(target_up20_joint_positions, width_to_finger_angle(initial_width))
+    ###1
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_up20_joint_positions,
-                                             simulation_context,episode_path,is_record=True,steps=30)
+                                             simulation_context,episode_path,is_record=False,steps=30)
     
     target_joint_positions = np.append(target_joint_positions, width_to_finger_angle(any_data_dict["width"]))
+    ###2
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions,
-                                             simulation_context,episode_path,is_record=True, steps=50)
+                                             simulation_context,episode_path,is_record=False, steps=50)
 
-    start_force_control_gripper(robot)
+    # start_force_control_gripper(robot)
     # select 16 steps to record
-    selected_steps = np.linspace(0, 59, 30).astype(int)
-    for _ in range(60):
-        simulation_context.step(render = True)
-        if _ in selected_steps:
-            recording(robot, cameras, episode_path, simulation_context)
-        
+    # selected_steps = np.linspace(0, 59, 30).astype(int)
+    # for _ in range(60):
+    #     simulation_context.step(render = True)
+    #     ###3
+    #     # if _ in selected_steps:
+    #     #     recording(robot, cameras, episode_path, simulation_context)
 
+    # complete_joint_positions = 
+        
+    ###4
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_up20_joint_positions,
-                                             simulation_context,episode_path,is_record=True,steps=30)
+                                             simulation_context,episode_path,is_record=False,steps=30)
     
     with h5py.File(episode_path, "a") as f:
         if "label" not in f:
@@ -134,7 +137,7 @@ def planning_grasp_path(robot,cameras, any_data_dict,AKSolver,simulation_context
     for _ in range(10):
         simulation_context.step(render = True)
     
-    stop_force_control_gripper(robot)
+    # stop_force_control_gripper(robot)
     complete_joint_positions = robot.get_joint_positions()
     finger_joint_width = finger_angle_to_width(complete_joint_positions[6])
     complete_joint_positions = control_gripper(robot,cameras,finger_joint_width,0.14,complete_joint_positions,

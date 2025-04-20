@@ -8,16 +8,12 @@ from omni.isaac.core.prims import XFormPrim # type: ignore
 import omni.usd # type: ignore
 from pxr import Usd, UsdGeom # type: ignore
 
-usd_file_path = os.path.join(ROOT_DIR, "../../ur10e_grasp_set.usd")
-robot_path = "/World/ur10e"
-camera_path = "/World/ur10e/tool0/Camera"
-front_camera_path = "/World/front"
-tool0_path = "/World/ur10e/tool0"
-flange_path = "/Wprld/ur10e/flange"
-base_path = "/World/ur10e/base"
-baselink_path = "/World/ur10e/base_link"
-robotiqpad_R_path = "/World/ur10e/right_inner_finger_pad"
-robotiqpad_L_path = "/World/ur10e/left_inner_finger_pad"
+# usd_file_path = os.path.join(ROOT_DIR, "../../ur10e_grasp_set.usd")
+usd_file_path = os.path.join(ROOT_DIR, "../../ur10e_grasp.usd")
+camera_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0/Camera"
+tool0_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0"
+baselink_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/base_link"
+robotiqpad_R_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/Robotiq_2F_140_config/right_inner_finger"
 
 def create_rotation_matrix(axis, angle_degrees):
     """
@@ -187,57 +183,84 @@ def get_end_effector_pose()-> np.ndarray[6]:
 
     return T_end_pose
 
+
+def get_local_transform(prim_path: str) -> np.ndarray:
+    """
+    Get the local transformation matrix of a given prim in the USD stage.
+
+    Args:
+        prim_path (str): The path to the prim in the USD stage.
+
+    Returns:
+        np.ndarray: A 4x4 transformation matrix representing the local transformation of the prim.
+    """
+    transform_stage = get_current_stage()
+    frame = transform_stage.GetPrimAtPath(prim_path)
+    xformable = UsdGeom.Xformable(frame)
+    T_local = xformable.GetLocalTransformation()
+    T_local = np.array(T_local).T
+    return T_local
+
+def get_world_transform(prim_path: str) -> np.ndarray:
+    """
+    Get the world transformation matrix of a given prim in the USD stage.
+    Args:
+        prim_path (str): The path to the prim in the USD stage.
+    Returns:
+        np.ndarray: A 4x4 transformation matrix representing the world transformation of the prim.
+    """
+    # transform_stage = Usd.Stage.Open(usd_file_path)
+    transform_stage = get_current_stage()
+    frame = transform_stage.GetPrimAtPath(prim_path)
+    xformable = UsdGeom.Xformable(frame)
+    T_world = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+    T_world = np.array(T_world).T
+    return T_world
+
+
 def transform_terminator(any_data_dict):
     
     """
-    Transforming function to transform 
-    from target tool0 to baselink
+    Transforming function to transform
+    the terminator to the tool0 frame.
+    Args:
+        any_data_dict (dict): A dictionary containing the data to be transformed.
+            - "T": The transformation matrix of the target.
+            - "depth": The depth value for the transformation.
+    Returns:
+        np.ndarray: The transformation matrix from the base link to the tool0 frame. 
     """
-    transform_stage = Usd.Stage.Open(usd_file_path)
-
-    frame_tool0 = transform_stage.GetPrimAtPath(tool0_path)
-    xformable_tool0 = UsdGeom.Xformable(frame_tool0)
-    T_tool0_2_baselink = xformable_tool0.GetLocalTransformation()
-    T_tool0_2_baselink = np.array(T_tool0_2_baselink).T
-    # print("origin tool0 to baselink:\n",T_tool0_2_baselink)
-
-    frame_right_pad = transform_stage.GetPrimAtPath(robotiqpad_R_path)
-    xformable_TCP = UsdGeom.Xformable(frame_right_pad)
-    T_Rpad_2_baselink = xformable_TCP.GetLocalTransformation()
-    T_Rpad_2_baselink = np.array(T_Rpad_2_baselink).T
-
-    frame_camera = transform_stage.GetPrimAtPath(camera_path)
-    xformable_camera = UsdGeom.Xformable(frame_camera)
-    T_camera_2_tool0 = xformable_camera.GetLocalTransformation()
-    T_camera_2_tool0 = np.array(T_camera_2_tool0).T
-    # print("camera to tool0:\n",T_camera_2_tool0)
-
-    T_camera_2_baselink = T_tool0_2_baselink @ T_camera_2_tool0
+    # Get the local transformation matrices
+    T_baselink_2_tool0 = get_local_transform(tool0_path)
+    T_baselink_2_Rpad = get_local_transform(robotiqpad_R_path)
+    T_tool0_2_camera = get_local_transform(camera_path)
+    
+    T_baselink_2_camera = T_baselink_2_tool0 @ T_tool0_2_camera
     # T_camera_2_baselink = T_tool0_2_baselink
     # print("camera to tool0:",T_camera_2_tool0)
 
-    T_Rpad_2_tool0 = np.linalg.inv(T_tool0_2_baselink) @ T_Rpad_2_baselink
+    T_tool0_2_Rpad = np.linalg.inv(T_baselink_2_tool0) @ T_baselink_2_Rpad
     # print("Rpad to tool0:\n",T_Rpad_2_tool0)
     
 
-    T_TCP_2_tool0 = np.eye(4)
-    T_TCP_2_tool0[2,3] = T_Rpad_2_tool0[2,3] + 0.033 - any_data_dict["depth"]  ## 0.02
+    T_tool0_2_TCP = np.eye(4)
+    T_tool0_2_TCP[2,3] = T_tool0_2_Rpad[2,3] + 0.033 - any_data_dict["depth"]  ## 0.02
 
-    T_optic_2_baselink = T_camera_2_baselink
-    T_optic_2_baselink[:3,:3] = T_tool0_2_baselink[:3,:3]
+    T_baselink_2_optic = T_baselink_2_camera
+    T_baselink_2_optic[:3,:3] = T_baselink_2_tool0[:3,:3]
     # print("optic to baselink:\n",T_optic_2_baselink)
 
-    T_target_2_optic = any_data_dict["T"]
+    T_optic_2_target = any_data_dict["T"]
 
     # T_target_2_baselink = T_optic_2_baselink @ T_target_2_optic
     # print("target to optic:\n",T_target_2_optic)
     # print("target to baselink:\n",T_target_2_baselink)
 
-    T_tool0_2_TCP = np.linalg.inv(T_TCP_2_tool0)
+    T_TCP_2_tool0 = np.linalg.inv(T_tool0_2_TCP)
     # print("tool0 to TCP:\n",T_tool0_2_TCP)
 
-    T_Tool0_2_baselink = T_optic_2_baselink @ T_target_2_optic @ T_tool0_2_TCP
+    T_baselink_2_Tool0 = T_baselink_2_optic @ T_optic_2_target @ T_TCP_2_tool0
     # print("target tool0 to baselink:\n",T_Tool0_2_baselink)
 
-    return T_Tool0_2_baselink
+    return T_baselink_2_Tool0
    

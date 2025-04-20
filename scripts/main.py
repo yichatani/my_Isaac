@@ -5,7 +5,32 @@ warnings.filterwarnings("ignore")
 """Launch the simulation application."""
 from omni.kit.app import get_app # type: ignore
 from omni.isaac.kit import SimulationApp # type: ignore
-simulation_app = SimulationApp({"headless": False})
+simulation_app = SimulationApp({
+    "headless": False,                          # If need GUI
+    "hide_ui": True,                            
+    "active_gpu": 0,                            # Set GPU
+    "physics_gpu": 0,
+    "multi_gpu": False,                         
+    "max_gpu_count": None,
+    "sync_loads": True,                        
+    "width": 1280,                             
+    "height": 720,                             
+    "window_width": 1440,
+    "window_height": 900,
+    "display_options": 3094,                    
+    "subdiv_refinement_level": 0,               
+    "renderer": "RayTracedLighting",            
+    "anti_aliasing": 3,                         
+    "samples_per_pixel_per_frame": 64,          
+    "denoiser": True,                           
+    "max_bounces": 4,                           
+    "max_specular_transmission_bounces": 6,
+    "max_volume_bounces": 4,
+    "open_usd": None,
+    "livesync_usd": None,
+    "fast_shutdown": True,
+    "profiler_backend": [],
+    })
 
 def enable_extensions():
     extension_manager = get_app().get_extension_manager()
@@ -14,6 +39,8 @@ def enable_extensions():
     extension_manager.set_extension_enabled("omni.isaac.dynamic_control", True)
 enable_extensions()
 
+
+
 """Rest everything follows."""
 # Import necessary libraries
 import os
@@ -21,26 +48,33 @@ import sys
 import yaml
 import signal
 import torch
+import time
+import numpy as np
 from matplotlib import pyplot as plt
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-from omni.isaac.core.utils.stage import open_stage # type: ignore
+from omni.isaac.core.utils.stage import open_stage, get_current_stage # type: ignore
 from omni.isaac.core.utils.extensions import get_extension_path_from_name # type: ignore
+from omni.isaac.core.utils.types import ArticulationAction # type: ignore
+from omni.isaac.core.articulations import ArticulationView # type: ignore
 from omni.isaac.core import World # type: ignore
+from pxr import Usd, Sdf
 from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinematicsSolver
 from modules.grasp_generator import any_grasp
-from modules.control import control_gripper,finger_angle_to_width, control_robot_by_policy
+from modules.control import control_robot_by_policy
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, \
-    rgb_and_depth,reset_obj_pose,reset_obj_z,check_obj_pose_err
-from modules.record_data import create_episode_file, observing,save_camera_data
-from modules.motion_planning import planning_grasp_path
+    rgb_and_depth,reset_obj_pose,check_obj_pose_err
+from modules.record_data import create_episode_file, observing
+from modules.motion_planning import planning_grasp_path, T_pose_2_joints
+from modules.transform import get_local_transform, get_world_transform
 from inference_policy.inference import inference_policy
-from Pre_trained_graspnet.inference import pretrained_graspnet
+# from Pre_trained_graspnet.inference import pretrained_graspnet
 
 ### file_paths
-usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp_set.usd")
+usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp.usd")
 mg_extension_path = get_extension_path_from_name("omni.isaac.motion_generation")
 kinematics_config_dir = os.path.join(mg_extension_path, "motion_policy_configs")
-urdf_path = os.path.join(ROOT_DIR, "../urdf/ur10e_gripper.urdf")
+print("kinematics_config_dir:", kinematics_config_dir)
+urdf_path = kinematics_config_dir + "/universal_robots/ur10e/ur10e.urdf"
 yaml_path = kinematics_config_dir + "/universal_robots/ur10e/rmpflow/ur10e_robot_description.yaml"
 
 ### prim paths
@@ -70,21 +104,41 @@ def main(is_policy=False, self_trained_model=None) -> None:
         self_trained_model (bool): Flag to indicate if using a self-trained model.
     """
     # Open the stage
-    stage = open_stage(usd_path=usd_file_path)
+    print("Opening stage...")
+    open_stage(usd_path=usd_file_path)
+    stage = get_current_stage()
+    print("Stage opened.")
     # Initialize the world and simulation context
     simulation_context = initialize_simulation_context()
     
     # Initial robot
     robot = initialize_robot(robot_path)
-    for _ in range(1):
+    for _ in range(5):
         simulation_context.step(render=True)
-    # Initial ArticulationKinematicsSolver
+    
+    tool0_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0"
+    robotiqpad_R_path = "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/Robotiq_2F_140_config/right_inner_finger"
+    # T_baselink_2_tool0 = get_local_transform(tool0_path)
+    # print("T_baselink_2_tool0:\n", T_baselink_2_tool0)
+
+    T_world_2_tool0 = get_world_transform(tool0_path)
+    print("T_world_2_tool0:\n",T_world_2_tool0)
+    T_world_2_Rpad = get_local_transform(robotiqpad_R_path)
+    print("T_world_2_Rpad:\n",T_world_2_Rpad)
+
+    exit()
+    
     LulaKSolver = LulaKinematicsSolver(
         robot_description_path=yaml_path,
         urdf_path=urdf_path
     )
     # print("KSolver get_all_frame_names:",LulaKSolver.get_all_frame_names())
     AKSolver = ArticulationKinematicsSolver(robot,LulaKSolver,"tool0")
+
+    # T_joint_positions = T_pose_2_joints(T_baselink_2_tool0[:3,3],T_baselink_2_tool0[:3,:3],AKSolver)
+    # # setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+    # print("T_joint_positions:", T_joint_positions)
+    # exit()
 
     global camera_paths
     sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
@@ -120,6 +174,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
                 data_dict = rgb_and_depth(sensor,simulation_context)
                 # any_data_dict = any_grasp(data_dict)
                 if self_trained_model is not None:
+                    continue
                     assert self_trained_model=="1billion.tar" or "mega.tar", "self_trained_model invalid"
                     print(f"<<<Using self-trained model: {self_trained_model}>>>")
                     any_data_dict = pretrained_graspnet(data_dict, chosen_model=self_trained_model)

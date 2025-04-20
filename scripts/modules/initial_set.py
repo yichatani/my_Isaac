@@ -109,9 +109,9 @@ def initialize_robot(robot_path):
     
     robot.set_solver_position_iteration_count(64)
     robot.set_solver_velocity_iteration_count(64)
-    # print("Available DOF Names:", robot.dof_names)
+    print("Available DOF Names:", robot.dof_names)
 
-    # print(f"Initial joint positions: {robot.get_joint_positions()}")
+    print(f"Initial joint positions: {robot.dof_names}")
 
     complete_joint_positions = robot.get_joint_positions()
     setting_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])

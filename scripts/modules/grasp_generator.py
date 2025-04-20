@@ -99,7 +99,7 @@ def save_camera_data(data_dict, output_dir="./output_data"):
 
 def vis_grasps(gg,cloud):
     """Visualize the grasp"""
-    trans_mat = np.array([[-1,0,0,0],[0,1,0,0],[0,0,-1,0],[0,0,0,1]])
+    trans_mat = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
     cloud.transform(trans_mat)
     grippers = gg.to_open3d_geometry_list()
     for gripper in grippers:
@@ -179,7 +179,7 @@ def any_grasp(data_dict):
     gg = gg.nms().sort_by_score()
     gg = gg[0:20]
     # print(gg)
-    # vis_grasps(gg,cloud)
+    vis_grasps(gg,cloud)
     # exit()
 
     if len(gg) == 0 or gg[0].score < 0.10:

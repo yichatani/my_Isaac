@@ -1,8 +1,11 @@
-robot_path: "/World/ur10e"
+robot_path: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140"
+
+# Robotiq_2F_140_config/right_inner_finger_pad_joint
+# right_inner_finger_pad_joint
 
 camera_paths:
-  sensor: "/World/ur10e/tool0/Camera"
-  in_hand: "/World/ur10e/tool0/in_hand"
+  sensor: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0/Camera"
+  in_hand: "/World/ur10e_robotiq2f_140_ROS/ur10e_robotiq2f_140/ur10e/tool0/in_hand"
   up: "/World/up"
   front: "/World/front"
 

@@ -18,7 +18,7 @@ def interpolate_joint_positions(start_positions, target_positions, steps=50)-> n
 def width_to_finger_angle(width: float) -> float:
     """Transfer from width to angle"""
     max_width = 0.140  # For 2F-140
-    max_angle = 0.7    # Maximum finger_joint angle in radians
+    max_angle = 0.785    # Maximum finger_joint angle in radians
     scale = max_width / max_angle
 
     if width < 0 or width > max_width:
@@ -31,7 +31,7 @@ def width_to_finger_angle(width: float) -> float:
 def finger_angle_to_width(finger_angle: float) -> float:
     """Transfer from angle to width"""
     max_width = 0.140  # For 2F-140
-    max_angle = 0.7    # Maximum finger_joint angle in radians
+    max_angle = 0.785    # Maximum finger_joint angle in radians
     scale = max_width / max_angle
 
     if finger_angle > max_angle:
