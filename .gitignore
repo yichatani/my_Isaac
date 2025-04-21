@@ -4,6 +4,6 @@ scripts/license/*
 scripts/log/*
 !scripts/log/.gitkeep
 output_data/
-# .thumbs/
-# .DS_Store
-# .TimeRecord
+.thumbs/
+.DS_Store
+.TimeRecord
