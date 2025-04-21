@@ -244,6 +244,20 @@ def gripper_width_to_openpoint_z(width_m: float) -> float:
     return z_mm / 1000
 
 
+def T_pose_2_joints(T_translation:np.ndarray, T_rotation:np.ndarray, AKSolver) -> np.ndarray:
+    """
+    Process the translation and rotation to get the joint positions.
+    """
+    T_quats = rot_matrices_to_quats(T_rotation)
+    T_joint_states, succ = AKSolver.compute_inverse_kinematics(T_translation, T_quats)
+    T_joint_positions = T_joint_states.joint_positions
+    # make sure the wrist don't rotate too much, to prevent collision
+    # if abs(T_joint_positions[5]) > math.pi/2:
+    #     T_joint_positions = T_joint_positions.copy()
+    #     T_joint_positions[5] = abs(T_joint_positions[5]) - math.pi
+    return T_joint_positions 
+
+
 def transform_terminator(any_data_dict):
     
     """

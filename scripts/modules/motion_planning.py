@@ -5,8 +5,9 @@ import math
 import numpy as np
 from omni.isaac.core.prims import XFormPrim # type: ignore
 from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, euler_angles_to_quats,quats_to_euler_angles # type: ignore
-from modules.control import control_gripper,control_robot,finger_angle_to_width, start_force_control_gripper, stop_force_control_gripper,width_to_finger_angle,control_both_robot_gripper
-from modules.transform import transform_terminator,get_end_effector_pose
+from modules.control import control_gripper,control_robot,start_force_control_gripper, \
+stop_force_control_gripper,width_to_finger_angle,control_both_robot_gripper
+from modules.transform import transform_terminator,get_end_effector_pose,T_pose_2_joints
 from modules.record_data import recording
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -40,19 +41,6 @@ def if_grasping_success(prim_paths:list) -> bool:
             return True
     return False
 
-
-def T_pose_2_joints(T_translation:np.ndarray, T_rotation:np.ndarray, AKSolver) -> np.ndarray:
-    """
-    Process the translation and rotation to get the joint positions.
-    """
-    T_quats = rot_matrices_to_quats(T_rotation)
-    T_joint_states, succ = AKSolver.compute_inverse_kinematics(T_translation, T_quats)
-    T_joint_positions = T_joint_states.joint_positions
-    # make sure the wrist don't rotate too much, to prevent collision
-    if abs(T_joint_positions[5]) > math.pi/2:
-        T_joint_positions = T_joint_positions.copy()
-        T_joint_positions[5] = abs(T_joint_positions[5]) - math.pi
-    return T_joint_positions 
 
 def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,episode_path,
                         initial_joint_positions:np.array=np.array([0, -1.447, 0.749, -0.873, -1.571, 0]),

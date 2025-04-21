@@ -32,14 +32,6 @@ simulation_app = SimulationApp({
     "profiler_backend": [],
     })
 
-def enable_extensions():
-    extension_manager = get_app().get_extension_manager()
-    extension_manager.set_extension_enabled("omni.isaac.motion_generation",True)
-    extension_manager.set_extension_enabled("omni.physx", True)
-    extension_manager.set_extension_enabled("omni.isaac.dynamic_control", True)
-enable_extensions()
-
-
 
 """Rest everything follows."""
 # Import necessary libraries
@@ -54,6 +46,7 @@ from matplotlib import pyplot as plt
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 from omni.isaac.core.utils.stage import open_stage, get_current_stage # type: ignore
 from omni.isaac.core.utils.extensions import get_extension_path_from_name # type: ignore
+from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, euler_angles_to_quats,quats_to_euler_angles # type: ignore
 from omni.isaac.core.utils.types import ArticulationAction # type: ignore
 from omni.isaac.core.articulations import ArticulationView # type: ignore
 from omni.isaac.core import World # type: ignore
@@ -71,7 +64,7 @@ from inference_policy.inference import inference_policy
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp.usd")
 mg_extension_path = get_extension_path_from_name("omni.isaac.motion_generation")
 kinematics_config_dir = os.path.join(mg_extension_path, "motion_policy_configs")
-print("kinematics_config_dir:", kinematics_config_dir)
+# print("kinematics_config_dir:", kinematics_config_dir)
 urdf_path = kinematics_config_dir + "/universal_robots/ur10e/ur10e.urdf"
 yaml_path = kinematics_config_dir + "/universal_robots/ur10e/rmpflow/ur10e_robot_description.yaml"
 
@@ -142,7 +135,12 @@ def main(is_policy=False, self_trained_model=None) -> None:
                     data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
                 else:
                     actions = inference_policy(data_sample,obs_steps=3,action_steps=6)
-                    data_sample = control_robot_by_policy(robot,record_camera_dict,actions,simulation_context,data_sample)
+                    T_quats = euler_angles_to_quats(actions[:,3:6])
+                    T_joint_states, succ = AKSolver.compute_inverse_kinematics(actions[:,:3], T_quats)
+                    joint_actions = T_joint_states.joint_positions
+                    joint_actions = np.concatenate((joint_actions, actions[:,6:7]), axis=1)
+                    assert joint_actions.shape[0] == actions.shape[0], "Mismatch in action step count!"
+                    data_sample = control_robot_by_policy(robot,record_camera_dict,joint_actions,simulation_context,data_sample)
 
         else:
             reset_obj_pose(obj_prim_paths,simulation_context)
