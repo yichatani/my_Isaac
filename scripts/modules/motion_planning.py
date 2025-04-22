@@ -64,7 +64,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
         print("No valid target up20 joint positions found.")
         return False
 
-    initial_width = any_data_dict["width"] + 0.03
+    initial_width = any_data_dict["width"]
     if initial_width > 0.14:
         initial_width = 0.14
     target_up20_joint_positions = np.append(target_up20_joint_positions, width_to_finger_angle(initial_width))

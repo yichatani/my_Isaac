@@ -281,7 +281,7 @@ def transform_terminator(any_data_dict):
     T_baselink_2_camera = T_baselink_2_tool0 @ T_tool0_2_camera
     
     T_tool0_2_TCP = np.eye(4)
-    T_tool0_2_TCP[2,3] = gripper_width_to_openpoint_z(any_data_dict["width"]) - any_data_dict["depth"] - 0.01
+    T_tool0_2_TCP[2,3] = gripper_width_to_openpoint_z(any_data_dict["width"]) - any_data_dict["depth"]
 
     T_baselink_2_optic = T_baselink_2_camera
     T_baselink_2_optic[:3,:3] = T_baselink_2_tool0[:3,:3]
