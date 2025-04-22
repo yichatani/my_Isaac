@@ -15,9 +15,9 @@ obj_prim_paths:
   - path: "/SM_Mug_A2"
     enabled: false
   - path: "/_11_banana"
-    enabled: true
-  - path: "/_35_power_drill"
     enabled: false
+  - path: "/_35_power_drill"
+    enabled: true
   - path: "/multi_color_cube_instanceable"
     enabled: false
 

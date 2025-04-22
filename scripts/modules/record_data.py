@@ -36,16 +36,16 @@ def create_episode_file(cameras, height, width):
             print("Creating episode file...")
 
             # Global index and trajectory-related datasets
-            f.create_dataset("index", shape=(1, 1), maxshape=(None, 1), dtype=np.uint8, compression="lzf")
-            f.create_dataset("agent_pos", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
-            f.create_dataset("action", shape=(1, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
-            f.create_dataset("label", shape=(1,), dtype=np.uint8, compression="lzf")
+            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype=np.uint8, compression="lzf")
+            f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
+            f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
+            f.create_dataset("label", shape=(0,), dtype=np.uint8, compression="lzf")
 
             for cam in cameras.keys():
                 # RGB and Depth
-                f.create_dataset(f"{cam}/rgb", shape=(1, height, width, 3), maxshape=(None, height, width, 3),
+                f.create_dataset(f"{cam}/rgb", shape=(0, height, width, 3), maxshape=(None, height, width, 3),
                                  dtype=np.uint8, compression="lzf")
-                f.create_dataset(f"{cam}/depth", shape=(1, height, width), maxshape=(None, height, width),
+                f.create_dataset(f"{cam}/depth", shape=(0, height, width), maxshape=(None, height, width),
                                  dtype=np.float32, compression="lzf")
                 # f.create_dataset(f"{cam}/depth", shape=(1, height, width), maxshape=(None, height, width),
                 #                  dtype=np.uint16, compression="lzf")
@@ -64,16 +64,19 @@ def recording(robot, cameras, episode_path, simulation_context):
     
     with h5py.File(episode_path, "a") as f:
         if "index" not in f:
-            f.create_dataset("index", shape=(0, 1), maxshape=(None, 1), dtype='i4')
+            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4')
             f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype='f4')
             f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype='f4')
+            f.create_dataset("label", shape=(0,), dtype=np.uint8, compression="lzf")
 
             for cam in cameras:
-                f.create_dataset(f"{cam}/rgb", shape=(0, 128, 128, 3), maxshape=(None, 128, 128, 3), dtype='uint8')
-                f.create_dataset(f"{cam}/depth", shape=(0, 128, 128), maxshape=(None, 128, 128), dtype='f4')
+                f.create_dataset(f"{cam}/rgb", shape=(0, 448, 448, 3), maxshape=(None, 448, 448, 3),
+                                 dtype=np.uint8, compression="lzf")
+                f.create_dataset(f"{cam}/depth", shape=(0, 448, 448), maxshape=(None, 448, 448),
+                                 dtype=np.float32, compression="lzf")
         
         index = f["index"].shape[0]
-        f["index"].resize((index + 1, 1))
+        f["index"].resize((index + 1,))
         f["index"][-1] = index
 
         # Record action
