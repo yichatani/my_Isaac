@@ -2,6 +2,7 @@ import os
 import time
 import omni.usd # type: ignore
 from PIL import Image
+import math
 import numpy as np
 import random
 from scipy.spatial.transform import Rotation as R
@@ -41,10 +42,9 @@ def reset_obj_pose(prim_paths,simulation_context):
     for prim_path in prim_paths:
         obj = XFormPrim(prim_path)
         euler_angles = [
-            # random.uniform(-math.pi/16, math.pi/16),
+            random.uniform(-math.pi/16, math.pi/16),
             # random.uniform(-math.pi/16, math.pi/16),
             # random.uniform(-math.pi, math.pi),
-            0,
             0,
             0
         ]
