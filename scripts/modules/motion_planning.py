@@ -8,7 +8,7 @@ from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, euler_a
 from modules.control import control_gripper,control_robot,start_force_control_gripper, \
 stop_force_control_gripper,width_to_finger_angle,control_both_robot_gripper
 from modules.transform import transform_terminator,get_end_effector_pose,T_pose_2_joints
-from modules.record_data import recording
+from modules.record_data import recording, create_episode_file
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT_DIR + "/../../episodes")
@@ -42,9 +42,9 @@ def if_grasping_success(prim_paths:list) -> bool:
     return False
 
 
-def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,episode_path,
+def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
                         initial_joint_positions:np.array=np.array([0, -1.447, 0.749, -0.873, -1.571, 0]),
-                        ending_joint_positions:np.array=np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0])):
+                        ending_joint_positions:np.array=np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0]))-> bool:
     """
     Plan the grasp path for the robot.
     """
@@ -56,12 +56,20 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     target_rotation_up20 = target_rotation
 
     target_joint_positions = T_pose_2_joints(target_translation, target_rotation, AKSolver)
+    if target_joint_positions is None:
+        print("No valid target joint positions found.")
+        return False
     target_up20_joint_positions = T_pose_2_joints(target_translation_up20, target_rotation_up20, AKSolver)
+    if target_up20_joint_positions is None:
+        print("No valid target up20 joint positions found.")
+        return False
 
     initial_width = any_data_dict["width"] + 0.03
     if initial_width > 0.14:
         initial_width = 0.14
     target_up20_joint_positions = np.append(target_up20_joint_positions, width_to_finger_angle(initial_width))
+
+    episode_path = create_episode_file(cameras,height=448,width=448)
     ###1 go to the up20 position
     complete_joint_positions = robot.get_joint_positions()
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_up20_joint_positions,
@@ -120,3 +128,5 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
                                              simulation_context, episode_path,is_record=False,steps=20)
     for _ in range(10):
         simulation_context.step(render = True)
+    
+    return True

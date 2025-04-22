@@ -92,7 +92,7 @@ def start_force_control_gripper(robot):
     set_joint_stiffness_damping(stage, gripper_dof_path, stiffness=0.0, damping=0.0)
 
     torques = robot.get_applied_joint_efforts()
-    torques[gripper_dof_index] = 2     # max torque
+    torques[gripper_dof_index] = 3     # max torque
     robot.set_joint_efforts(torques)
 
 

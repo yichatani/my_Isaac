@@ -167,9 +167,11 @@ def main(is_policy=False, self_trained_model=None) -> None:
                     any_data_dict = any_grasp(data_dict)
                 if any_data_dict is False:
                     break
-                episode_path = create_episode_file(record_camera_dict,height=448,width=448)
-                planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,episode_path,
+                plan_succ = planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,
                                     initial_joint_positions,ending_joint_positions)
+                if not plan_succ:
+                    print("Planning failed, skipping")
+                    continue
                 if episode_count % 10 == 0:
                     torch.cuda.empty_cache()
                 print(f"Completed {episode_count} episodes.")
@@ -179,7 +181,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = True)
+    main(is_policy = False)
     # main(is_policy = False, self_trained_model="1billion.tar")
     
 

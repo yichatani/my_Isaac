@@ -252,7 +252,9 @@ def T_pose_2_joints(T_translation:np.ndarray, T_rotation:np.ndarray, AKSolver) -
     T_joint_states, succ = AKSolver.compute_inverse_kinematics(T_translation, T_quats)
     T_joint_positions = T_joint_states.joint_positions
     if not succ:
-        raise ValueError("IK failed, skipping")                    
+        # raise ValueError("IK failed, skipping")
+        print(">>>IK failed<<<")
+        return None                  
     # make sure the wrist don't rotate too much, to prevent collision
     # if abs(T_joint_positions[5]) > math.pi/2:
     #     T_joint_positions = T_joint_positions.copy()
@@ -279,7 +281,7 @@ def transform_terminator(any_data_dict):
     T_baselink_2_camera = T_baselink_2_tool0 @ T_tool0_2_camera
     
     T_tool0_2_TCP = np.eye(4)
-    T_tool0_2_TCP[2,3] = gripper_width_to_openpoint_z(any_data_dict["width"]) - any_data_dict["depth"]
+    T_tool0_2_TCP[2,3] = gripper_width_to_openpoint_z(any_data_dict["width"]) - any_data_dict["depth"] - 0.01
 
     T_baselink_2_optic = T_baselink_2_camera
     T_baselink_2_optic[:3,:3] = T_baselink_2_tool0[:3,:3]
