@@ -251,6 +251,8 @@ def T_pose_2_joints(T_translation:np.ndarray, T_rotation:np.ndarray, AKSolver) -
     T_quats = rot_matrices_to_quats(T_rotation)
     T_joint_states, succ = AKSolver.compute_inverse_kinematics(T_translation, T_quats)
     T_joint_positions = T_joint_states.joint_positions
+    if not succ:
+        raise ValueError("IK failed, skipping")                    
     # make sure the wrist don't rotate too much, to prevent collision
     # if abs(T_joint_positions[5]) > math.pi/2:
     #     T_joint_positions = T_joint_positions.copy()

@@ -39,7 +39,7 @@ def load_model_from_ckpt(ckpt_path):
     return model
 
 
-def inference_policy(data_sample,obs_steps=3,action_steps=5):
+def inference_policy(data_sample,obs_steps=3,action_steps=6):
     """
     Perform inference using the loaded model and configuration.
     Args:
@@ -67,6 +67,7 @@ def inference_policy(data_sample,obs_steps=3,action_steps=5):
         result = model.predict_action(obs_dict)
         action = result['action_pred'].squeeze(0).cpu().numpy()
 
+    print("Action shape:", action.shape)
     print("Predicted action:", action[0:action_steps])
     return np.array(action[0:action_steps], dtype=np.float32)
 

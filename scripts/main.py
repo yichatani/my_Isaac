@@ -130,15 +130,22 @@ def main(is_policy=False, self_trained_model=None) -> None:
             reset_obj_pose(obj_prim_paths,simulation_context)
             reset_robot_pose(robot,simulation_context)
             data_sample = None
-            for _ in range(100):
+            for _ in range(200):
                 if _ == 0:
                     data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
                 else:
                     actions = inference_policy(data_sample,obs_steps=3,action_steps=6)
-                    T_quats = euler_angles_to_quats(actions[:,3:6])
-                    T_joint_states, succ = AKSolver.compute_inverse_kinematics(actions[:,:3], T_quats)
-                    joint_actions = T_joint_states.joint_positions
-                    joint_actions = np.concatenate((joint_actions, actions[:,6:7]), axis=1)
+                    joint_actions = []
+                    for action in actions:
+                        T_quat = euler_angles_to_quats(action[3:6])
+                        T_joint_state, succ = AKSolver.compute_inverse_kinematics(action[:3], T_quat)
+                        if not succ:
+                            print("IK failed, skipping")
+                            continue
+                        joint_action = T_joint_state.joint_positions
+                        joint_action = np.concatenate((joint_action, action[6:7]), axis=0)
+                        joint_actions.append(joint_action)
+                    joint_actions = np.stack(joint_actions, axis=0)
                     assert joint_actions.shape[0] == actions.shape[0], "Mismatch in action step count!"
                     data_sample = control_robot_by_policy(robot,record_camera_dict,joint_actions,simulation_context,data_sample)
 
@@ -172,7 +179,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = False)
+    main(is_policy = True)
     # main(is_policy = False, self_trained_model="1billion.tar")
     
 
