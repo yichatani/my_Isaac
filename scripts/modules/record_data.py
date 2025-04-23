@@ -36,10 +36,10 @@ def create_episode_file(cameras, height, width):
             print("Creating episode file...")
 
             # Global index and trajectory-related datasets
-            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype=np.uint8, compression="lzf")
+            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4',compression='lzf')
             f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
             f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
-            f.create_dataset("label", shape=(1,), dtype=np.uint8, compression="lzf")
+            f.create_dataset("label", shape=(1,), dtype=np.uint8)
 
             for cam in cameras.keys():
                 # RGB and Depth
@@ -47,16 +47,9 @@ def create_episode_file(cameras, height, width):
                                  dtype=np.uint8, compression="lzf")
                 f.create_dataset(f"{cam}/depth", shape=(0, height, width), maxshape=(None, height, width),
                                  dtype=np.float32, compression="lzf")
-                # f.create_dataset(f"{cam}/depth", shape=(1, height, width), maxshape=(None, height, width),
-                #                  dtype=np.uint16, compression="lzf")
-
-                # Per-frame D_min and D_max
-                # f.create_dataset(f"{cam}/D_min", shape=(1,), maxshape=(None,), dtype=np.float32, compression="lzf")
-                # f.create_dataset(f"{cam}/D_max", shape=(1,), maxshape=(None,), dtype=np.float32, compression="lzf")
 
     print(f"Episode file created: {episode_path}")
     return episode_path
-
 
 
 def recording(robot, cameras, episode_path, simulation_context):
@@ -64,10 +57,10 @@ def recording(robot, cameras, episode_path, simulation_context):
     
     with h5py.File(episode_path, "a") as f:
         if "index" not in f:
-            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4')
+            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4', compression='lzf')
             f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype='f4')
             f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype='f4')
-            f.create_dataset("label", shape=(1,), dtype=np.uint8, compression="lzf")
+            f.create_dataset("label", shape=(1,), dtype=np.uint8)
 
             for cam in cameras:
                 f.create_dataset(f"{cam}/rgb", shape=(0, 448, 448, 3), maxshape=(None, 448, 448, 3),
@@ -93,16 +86,15 @@ def recording(robot, cameras, episode_path, simulation_context):
             f["action"].resize((index + 1, 7))
             f["action"][-1] = action
 
-        f["agent_pos"].resize((index + 1, 7))
-
-        # Assume current state = previous action (robot reaches goal perfectly)
-        # At t=0, assume robot is static at action[0]
-        if index > 0:
-            f["agent_pos"][-1] = f["action"][-2]
+            f["agent_pos"].resize((index + 1, 7))
+            if index > 0:
+                f["agent_pos"][-1] = f["action"][-2]
+            else:
+                f["agent_pos"][-1] = f["action"][-1]
         else:
-            # This should corerespond to the the observing function
-            # f["agent_pos"][-1] = f["action"][-1]
-            f["agent_pos"][-1] = f["action"][-1]
+            print("⚠️ Skipping frame due to invalid action.")
+            return
+
 
         for cam in cameras.keys():
             data_dict = rgb_and_depth(cameras[cam], simulation_context)
@@ -116,7 +108,8 @@ def recording(robot, cameras, episode_path, simulation_context):
             f[f"{cam}/depth"].resize((index + 1, *depth_raw.shape))
             f[f"{cam}/depth"][-1] = depth_raw
 
-        f.flush()
+        if index % 10 == 0:
+            f.flush()
         print(f"Recording frame {index} done.")
 
 
