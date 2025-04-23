@@ -72,7 +72,7 @@ ema:
 # Logging
 logging:
   group: dp3_grasping
-  name: dp3_cup_test
+  name: dp3_banana
   project: my_dp3_project
 
 # ----------------------

@@ -39,7 +39,7 @@ def create_episode_file(cameras, height, width):
             f.create_dataset("index", shape=(0,), maxshape=(None,), dtype=np.uint8, compression="lzf")
             f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
             f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
-            f.create_dataset("label", shape=(0,), dtype=np.uint8, compression="lzf")
+            f.create_dataset("label", shape=(1,), dtype=np.uint8, compression="lzf")
 
             for cam in cameras.keys():
                 # RGB and Depth
@@ -67,7 +67,7 @@ def recording(robot, cameras, episode_path, simulation_context):
             f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4')
             f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype='f4')
             f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype='f4')
-            f.create_dataset("label", shape=(0,), dtype=np.uint8, compression="lzf")
+            f.create_dataset("label", shape=(1,), dtype=np.uint8, compression="lzf")
 
             for cam in cameras:
                 f.create_dataset(f"{cam}/rgb", shape=(0, 448, 448, 3), maxshape=(None, 448, 448, 3),

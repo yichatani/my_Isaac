@@ -5,9 +5,10 @@ try:
     import hydra
     import pathlib
     import numpy as np
-    # from omegaconf import OmegaConf
     from diffusion_policy_3d.policy.dp3 import DP3
     from diffusion_policy_3d.common.pytorch_util import dict_apply
+    from omegaconf import OmegaConf
+    OmegaConf.register_new_resolver("eval", eval)
 except:
     raise ImportError("inference.py import error, please check your environment.")
 ROOT_PATH = os.path.dirname(__file__)
@@ -18,18 +19,11 @@ def load_model_from_ckpt(ckpt_path):
     # print(payload.keys())
     cfg = payload['cfg']
 
-    # overwrite zarr_path if empty or wrong
-    zarr_path = cfg.task.dataset.get("zarr_path", "")
-    if not zarr_path or not os.path.exists(zarr_path):
-        fixed_path = os.path.join(ROOT_PATH, "data/positive_1.zarr")
-        print(f"[INFO] Overriding zarr_path to: {fixed_path}")
-        cfg.task.dataset.zarr_path = fixed_path
-
     model: DP3 = hydra.utils.instantiate(cfg.policy)
     state_dict = payload['state_dicts'].get('ema_model', payload['state_dicts']['model'])
     model.load_state_dict(state_dict)
 
-    with open(ROOT_PATH + "/checkpoints/normalizer.pkl", "rb") as f:
+    with open(ROOT_PATH + "/checkpoints/dp3_cube_normalizer.pkl", "rb") as f:
         normalizer = dill.load(f)
 
     model.set_normalizer(normalizer)
@@ -47,7 +41,7 @@ def inference_policy(data_sample,obs_steps=3,action_steps=6):
     Returns:
         np.ndarray: The predicted action as a numpy array.
     """
-    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/latest.ckpt")
+    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/dp3_cube.ckpt")
     assert ckpt_path.is_file(), f"Checkpoint not found: {ckpt_path}"
 
     model = load_model_from_ckpt(ckpt_path)
@@ -68,8 +62,8 @@ def inference_policy(data_sample,obs_steps=3,action_steps=6):
         action = result['action_pred'].squeeze(0).cpu().numpy()
 
     print("Action shape:", action.shape)
-    print("Predicted action:", action[0:action_steps])
-    return np.array(action[0:action_steps], dtype=np.float32)
+    print("Predicted action:", action[1:action_steps])
+    return np.array(action[1:action_steps], dtype=np.float32)
 
 
 if __name__ == "__main__":

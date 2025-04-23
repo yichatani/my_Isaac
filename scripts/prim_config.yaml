@@ -17,7 +17,7 @@ obj_prim_paths:
   - path: "/_11_banana"
     enabled: false
   - path: "/_35_power_drill"
-    enabled: true
-  - path: "/multi_color_cube_instanceable"
     enabled: false
+  - path: "/multi_color_cube_instanceable"
+    enabled: true
 

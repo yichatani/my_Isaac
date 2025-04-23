@@ -78,12 +78,12 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     target_joint_positions = np.append(target_joint_positions, width_to_finger_angle(initial_width))
     ###2 go to the target position
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions,
-                                             simulation_context,episode_path,is_record=True, steps=50)
+                                             simulation_context,episode_path,is_record=True, steps=30)
     
     start_force_control_gripper(robot)
     # select 16 steps to record
-    selected_steps = np.linspace(0, 59, 30).astype(int)
-    for _ in range(60):
+    selected_steps = np.linspace(0, 19, 10).astype(int)
+    for _ in range(20):
         simulation_context.step(render = True)
         ###3 close the gripper
         if _ in selected_steps:
@@ -94,8 +94,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     with h5py.File(episode_path, "a") as f:
         if "label" not in f:
             # If dataset does not exist, create it with initial size (1,1) and allow resizing
-            label_dataset = f.create_dataset("label", shape=(1,), dtype=np.int32, compression="gzip")
-
+            label_dataset = f.create_dataset("label", shape=(0,), dtype=np.int32, compression="gzip")
             label_dataset[0] = 0  # Default to negative
         else:
             label_dataset = f["label"]
