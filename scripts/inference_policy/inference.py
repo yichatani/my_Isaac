@@ -23,10 +23,15 @@ def load_model_from_ckpt(ckpt_path):
     state_dict = payload['state_dicts'].get('ema_model', payload['state_dicts']['model'])
     model.load_state_dict(state_dict)
 
-    with open(ROOT_PATH + "/checkpoints/dp3_cube_normalizer.pkl", "rb") as f:
-        normalizer = dill.load(f)
-
-    model.set_normalizer(normalizer)
+    # with open(ROOT_PATH + "/checkpoints/dp3_cube_normalizer.pkl", "rb") as f:
+    #     normalizer = dill.load(f)
+    # model.set_normalizer(normalizer)
+    if 'pickles' in payload and 'normalizer' in payload['pickles']:
+        normalizer = dill.loads(payload['pickles']['normalizer'])
+        model.set_normalizer(normalizer)
+        print("Loaded normalizer from checkpoint.")
+    else:
+        raise ValueError("Normalizer not found in checkpoint.")
 
     model.eval().cuda()
     print(f"Model loaded successfully from {ckpt_path}")
