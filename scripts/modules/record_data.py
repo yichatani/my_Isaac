@@ -57,9 +57,9 @@ def recording(robot, cameras, episode_path, simulation_context):
     
     with h5py.File(episode_path, "a") as f:
         if "index" not in f:
-            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4', compression='lzf')
-            f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype='f4')
-            f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype='f4')
+            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4',compression='lzf')
+            f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
+            f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
             f.create_dataset("label", shape=(1,), dtype=np.uint8)
 
             for cam in cameras:
