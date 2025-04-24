@@ -6,7 +6,7 @@ warnings.filterwarnings("ignore")
 from omni.kit.app import get_app # type: ignore
 from omni.isaac.kit import SimulationApp # type: ignore
 simulation_app = SimulationApp({
-    "headless": True,                          # If need GUI
+    "headless": False,                          # If need GUI
     "hide_ui": True,                            
     "active_gpu": 0,                            # Set GPU
     "physics_gpu": 0,
@@ -100,6 +100,9 @@ def main(is_policy=False, self_trained_model=None) -> None:
     stage = get_current_stage()
     print("Stage opened.")
     simulation_context = initialize_simulation_context()
+    # my_world = World()
+    # my_world.physics_dt = 1.0 / 30.0
+    # my_world.reset()
     
     # Initial robot
     initial_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
@@ -134,10 +137,10 @@ def main(is_policy=False, self_trained_model=None) -> None:
             while True:
             # for _ in range(200):
                 if first_observation == True:
-                    data_sample = observing(robot,record_camera_dict,simulation_context,data_sample)
+                    data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=2)
                     first_observation = False
                 else:
-                    actions = inference_policy(data_sample,obs_steps=3,action_steps=4)
+                    actions = inference_policy(data_sample,obs_steps=2,action_steps=3)
                     joint_actions = []
                     for action in actions:
                         T_quat = euler_angles_to_quats(action[3:6])

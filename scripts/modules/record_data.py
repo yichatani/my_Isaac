@@ -113,9 +113,8 @@ def recording(robot, cameras, episode_path, simulation_context):
         print(f"Recording frame {index} done.")
 
 
-def observing(robot, cameras ,simulation_context, data_sample=None):
+def observing(robot, cameras ,simulation_context,data_sample=None,obs_steps=2):
     assert robot is not None, "Failed to initialize Articulation"
-    NUM_PADDING_FRAMES = 3
     data_dict = rgb_and_depth(cameras['front'], simulation_context)
     data_dict["rgb"], data_dict["depth"] = resize_images(data_dict["rgb"], data_dict["depth"])
     rgb = data_dict["rgb"].astype(np.uint8)
@@ -126,7 +125,7 @@ def observing(robot, cameras ,simulation_context, data_sample=None):
         pc_list, state_list = [], []
         if pc_raw.shape[0] > 32:
             pc = preprocess_point_cloud(pc_raw, use_cuda=True)
-            for _ in range(NUM_PADDING_FRAMES):
+            for _ in range(obs_steps):
                 pc_list.append(pc)
                 # state_list.append(np.zeros(7))
                 # state_list.append(record_robot_7dofs(robot))
@@ -151,7 +150,7 @@ def observing(robot, cameras ,simulation_context, data_sample=None):
             if state.ndim == 1:
                 state = state.reshape(1, -1)  # shape: (1, 7)
             pc = pc.reshape(1, *pc.shape)
-            if data_sample['obs']['point_cloud'].shape[0] == NUM_PADDING_FRAMES:
+            if data_sample['obs']['point_cloud'].shape[0] == obs_steps:
                 data_sample['obs']['point_cloud'] = np.concatenate((data_sample['obs']['point_cloud'][1:], pc), axis=0)
                 data_sample['obs']['agent_pos'] = np.concatenate((data_sample['obs']['agent_pos'][1:], state), axis=0)
             else:

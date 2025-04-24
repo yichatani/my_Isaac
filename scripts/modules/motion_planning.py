@@ -52,33 +52,40 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     target_translation = T_target[:3,3]
     target_rotation = T_target[:3,:3]
 
-    target_translation_up20 = target_translation + np.array([0,0,0.4])
+    target_translation_up20 = target_translation + np.array([0,0,0.2])
     target_rotation_up20 = target_rotation
+
+    target_translation_end = np.array([0.5,-0.30,0.8])
+    target_rotation_end = target_rotation
 
     target_joint_positions = T_pose_2_joints(target_translation, target_rotation, AKSolver)
     if target_joint_positions is None:
         print("No valid target joint positions found.")
         return False
-    target_up20_joint_positions = T_pose_2_joints(target_translation_up20, target_rotation_up20, AKSolver)
-    if target_up20_joint_positions is None:
+    target_joint_positions_up20 = T_pose_2_joints(target_translation_up20, target_rotation_up20, AKSolver)
+    if target_joint_positions_up20 is None:
         print("No valid target up20 joint positions found.")
+        return False
+    target_joint_positions_end = T_pose_2_joints(target_translation_end, target_rotation_end, AKSolver)
+    if target_joint_positions_end is None:
+        print("No valid target end joint positions found.")
         return False
 
     initial_width = any_data_dict["width"]
     if initial_width > 0.14:
         initial_width = 0.14
-    target_up20_joint_positions = np.append(target_up20_joint_positions, width_to_finger_angle(initial_width))
+    target_joint_positions_up20 = np.append(target_joint_positions_up20, width_to_finger_angle(initial_width))
 
     episode_path = create_episode_file(cameras,height=448,width=448)
     ###1 go to the up20 position
     complete_joint_positions = robot.get_joint_positions()
-    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_up20_joint_positions,
-                                             simulation_context,episode_path,is_record=True,steps=30)
+    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_up20,
+                                             simulation_context,episode_path,is_record=True,steps=50)
     
     target_joint_positions = np.append(target_joint_positions, width_to_finger_angle(initial_width))
     ###2 go to the target position
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions,
-                                             simulation_context,episode_path,is_record=True, steps=30)
+                                             simulation_context,episode_path,is_record=True, steps=20)
     
     start_force_control_gripper(robot)
     # select 16 steps to record
@@ -88,8 +95,9 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
         ###3 close the gripper
         if _ in selected_steps:
             recording(robot, cameras, episode_path, simulation_context)
-    ###4 go to the up20 position again
-    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_up20_joint_positions,
+    ###4 go to the end joint position again
+    target_joint_positions_end = np.append(target_joint_positions_end, robot.get_joint_positions()[6])
+    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_end,
                                              simulation_context,episode_path,is_record=True,steps=30)
     with h5py.File(episode_path, "a") as f:
         if "label" not in f:
