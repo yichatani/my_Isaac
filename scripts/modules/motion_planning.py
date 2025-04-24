@@ -108,10 +108,10 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
             label_dataset = f["label"]
             label_dataset[0] = 0  # Default to negative
 
-        check_width = np.array([])
-        for _ in range(30):
+        # check_width = np.array([])
+        for _ in range(10):
             simulation_context.step(render = True)
-            check_width = np.append(check_width, robot.get_joint_positions()[6])
+            # check_width = np.append(check_width, robot.get_joint_positions()[6])
         
         if if_grasping_success(obj_prim_paths):
             label_dataset[0] = 1
