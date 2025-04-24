@@ -36,9 +36,9 @@ def create_episode_file(cameras, height, width):
             print("Creating episode file...")
 
             # Global index and trajectory-related datasets
-            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4',compression='lzf')
-            f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
-            f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
+            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4')
+            f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32)
+            f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32)
             f.create_dataset("label", shape=(1,), dtype=np.uint8)
 
             for cam in cameras.keys():
@@ -56,17 +56,6 @@ def recording(robot, cameras, episode_path, simulation_context):
     assert robot is not None, "Failed to initialize Articulation"
     
     with h5py.File(episode_path, "a") as f:
-        if "index" not in f:
-            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4',compression='lzf')
-            f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
-            f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32, compression="lzf")
-            f.create_dataset("label", shape=(1,), dtype=np.uint8)
-
-            for cam in cameras:
-                f.create_dataset(f"{cam}/rgb", shape=(0, 448, 448, 3), maxshape=(None, 448, 448, 3),
-                                 dtype=np.uint8, compression="lzf")
-                f.create_dataset(f"{cam}/depth", shape=(0, 448, 448), maxshape=(None, 448, 448),
-                                 dtype=np.float32, compression="lzf")
         
         index = f["index"].shape[0]
         f["index"].resize((index + 1,))
@@ -87,7 +76,7 @@ def recording(robot, cameras, episode_path, simulation_context):
             f["action"][-1] = action
 
             f["agent_pos"].resize((index + 1, 7))
-            if index > 0:
+            if f["action"].shape[0] >=2:
                 f["agent_pos"][-1] = f["action"][-2]
             else:
                 f["agent_pos"][-1] = f["action"][-1]
