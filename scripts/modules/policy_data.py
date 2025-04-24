@@ -50,7 +50,8 @@ def preprocess_point_cloud(points, num_points=1024, use_cuda=True):
         [-0.084295,   -0.97705717, -0.19558536,  0.90482569],
         [ 0.,          0.,          0.,          1.        ],
     ])
-    WORK_SPACE = [[-0.12, 1.12], [-0.40, 0.80], [0.128, 1.5]]
+    WORK_SPACE = [[-0.12, 1.12], [-1.00, 1.00], [0.128, 1.5]]
+    # WORK_SPACE = [[-0.12, 1.12], [-0.40, 0.80], [0.128, 1.5]]
     # point_xyz = points[..., :3] * 0.00025
     point_xyz = points[..., :3]
     point_hom = np.concatenate([point_xyz, np.ones((point_xyz.shape[0], 1))], axis=1)
