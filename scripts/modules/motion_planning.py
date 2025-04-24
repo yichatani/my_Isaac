@@ -55,7 +55,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     target_translation_up20 = target_translation + np.array([0,0,0.2])
     target_rotation_up20 = target_rotation
 
-    target_translation_end = np.array([0.5,-0.30,0.8])
+    target_translation_end = np.array([0.5,-0.10,0.7])
     target_rotation_end = target_rotation
 
     target_joint_positions = T_pose_2_joints(target_translation, target_rotation, AKSolver)
@@ -71,7 +71,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
         print("No valid target end joint positions found.")
         return False
 
-    initial_width = any_data_dict["width"]
+    initial_width = any_data_dict["width"] + 0.02
     if initial_width > 0.14:
         initial_width = 0.14
     target_joint_positions_up20 = np.append(target_joint_positions_up20, width_to_finger_angle(initial_width))
