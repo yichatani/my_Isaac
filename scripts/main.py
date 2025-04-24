@@ -54,8 +54,8 @@ from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinem
 from modules.grasp_generator import any_grasp
 from modules.control import control_robot_by_policy
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, \
-    rgb_and_depth,reset_obj_pose,check_obj_pose_err
-from modules.record_data import create_episode_file, observing
+    rgb_and_depth,reset_obj_pose,check_obj_pose_err,initialize_world
+from modules.record_data import observing
 from modules.motion_planning import planning_grasp_path
 from inference_policy.inference import inference_policy
 # from Pre_trained_graspnet.inference import pretrained_graspnet
@@ -99,10 +99,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
     open_stage(usd_path=usd_file_path)
     stage = get_current_stage()
     print("Stage opened.")
-    simulation_context = initialize_simulation_context()
-    # my_world = World()
-    # my_world.physics_dt = 1.0 / 30.0
-    # my_world.reset()
+    # simulation_context = initialize_simulation_context()
+    simulation_context = initialize_world(dt=1.0/60.0)
     
     # Initial robot
     initial_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
