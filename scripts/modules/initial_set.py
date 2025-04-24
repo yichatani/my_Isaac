@@ -11,6 +11,7 @@ from omni.isaac.core.articulations import Articulation # type: ignore
 from omni.isaac.core.utils.prims import is_prim_path_valid # type: ignore
 from omni.isaac.core.simulation_context import SimulationContext # type: ignore
 from omni.isaac.sensor import Camera # type: ignore
+from omni.isaac.core import World # type: ignore
 
 
 # Function to list all prims in the stage
@@ -152,6 +153,18 @@ def initialize_simulation_context() -> SimulationContext:
 
     simulation_context.reset()
     return simulation_context
+
+
+
+def initialize_world(dt: float = 1.0 / 60.0) -> World:
+    """Initialize and reset the Isaac Sim world environment."""
+    world = World(stage_units_in_meters=1.0)
+
+    world.physics_dt = dt
+    
+    world.reset()
+
+    return world
 
 
 
