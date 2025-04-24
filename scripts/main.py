@@ -6,7 +6,7 @@ warnings.filterwarnings("ignore")
 from omni.kit.app import get_app # type: ignore
 from omni.isaac.kit import SimulationApp # type: ignore
 simulation_app = SimulationApp({
-    "headless": False,                          # If need GUI
+    "headless": True,                          # If need GUI
     "hide_ui": True,                            
     "active_gpu": 0,                            # Set GPU
     "physics_gpu": 0,
