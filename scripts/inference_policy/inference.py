@@ -6,18 +6,22 @@ try:
     import pathlib
     import numpy as np
     from diffusion_policy_3d.policy.dp3 import DP3
+    from diffusion_policy_3d.dataset.my_dataset import IsaacZarrDataset
     from diffusion_policy_3d.common.pytorch_util import dict_apply
     from omegaconf import OmegaConf
     OmegaConf.register_new_resolver("eval", eval)
 except:
     raise ImportError("inference.py import error, please check your environment.")
 ROOT_PATH = os.path.dirname(__file__)
+ROOT_DIR = str(pathlib.Path(__file__).parent.resolve())
 
 
 def check_pickles_keys():
-    payload = torch.load(ROOT_PATH + "/checkpoints/latest.ckpt", pickle_module=dill, map_location="cpu")
+    payload = torch.load(ROOT_PATH + "/checkpoints/dp3_cube.ckpt", pickle_module=dill, map_location="cpu")
     print("pickles keys:", payload.get("pickles", {}).keys())
 
+# check_pickles_keys()
+# exit()
 
 def load_model_from_ckpt(ckpt_path):
     print(f"Loading model from checkpoint: {ckpt_path}")
@@ -29,15 +33,12 @@ def load_model_from_ckpt(ckpt_path):
     state_dict = payload['state_dicts'].get('ema_model', payload['state_dicts']['model'])
     model.load_state_dict(state_dict)
 
-    with open(ROOT_PATH + "/checkpoints/dp3_cube_normalizer.pkl", "rb") as f:
-        normalizer = dill.load(f)
+    cfg.task.dataset.zarr_path = os.path.join(ROOT_DIR, cfg.task.dataset.zarr_path)
+    # print(cfg.task.dataset)
+    dataset: IsaacZarrDataset
+    dataset = hydra.utils.instantiate(cfg.task.dataset)
+    normalizer = dataset.get_normalizer()
     model.set_normalizer(normalizer)
-    # if 'pickles' in payload and 'normalizer' in payload['pickles']:
-    #     normalizer = dill.loads(payload['pickles']['normalizer'])
-    #     model.set_normalizer(normalizer)
-    #     print("Loaded normalizer from checkpoint.")
-    # else:
-    #     raise ValueError("Normalizer not found in checkpoint.")
 
     model.eval().cuda()
     print(f"Model loaded successfully from {ckpt_path}")
@@ -73,8 +74,8 @@ def inference_policy(data_sample,obs_steps=3,action_steps=6):
         action = result['action_pred'].squeeze(0).cpu().numpy()
 
     print("Action shape:", action.shape)
-    print("Predicted action:", action[1:action_steps])
-    return np.array(action[1:action_steps], dtype=np.float32)
+    print("Predicted action:", action[-action_steps:])
+    return np.array(action[-action_steps:], dtype=np.float32)
 
 
 if __name__ == "__main__":
