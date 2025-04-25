@@ -189,7 +189,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = False)
+    main(is_policy = True)
     # main(is_policy = False, self_trained_model="1billion.tar")
     
 
