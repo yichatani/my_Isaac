@@ -1,11 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import sys
-sys.path = [p for p in sys.path if "isaac-sim" not in p]
-# print(sys.path)
 import torchvision
-# print(torchvision.__version__)
 import copy
 
 from typing import Optional, Dict, Tuple, Union, List, Type
