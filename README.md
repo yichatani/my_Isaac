@@ -56,15 +56,15 @@ https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/pip_installa
 
 
 
-### (Optional) Set ".bashrc": 
+<!-- ### (Optional) Set ".bashrc": 
 
-Add codes in `./referencec_settings/add_settings.sh` into .bashrc. 
+Add codes in `./referencec_settings/add_settings.sh` into .bashrc.  -->
 
 
 
-### Build the environment: 
+<!-- ### Build the environment: 
 
-Each package used in this project is listed. Reference to `./referencec_settings/reference_env.md`.
+Each package used in this project is listed. Reference to `./referencec_settings/reference_env.md`. -->
 
 #### Requirements
 - Python
@@ -139,11 +139,14 @@ python main.py
 
 ## Logs
 
+**[2025/5/11]**
+
+**Progress:** Update depth compression. Collect data and train one policy which can work.
+
 
 **[2025/4/14]**
 
 **Progress:** Add pretrained_graspnet trained by ourselves.
-
 
 
 **[2025/4/13]**
