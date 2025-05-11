@@ -97,7 +97,7 @@ def reset_obj_z(prim_paths:list,simulation_context) -> None:
             
 
 
-def find_robot(robot_path):
+def find_robot(robot_path:str):
     """Check if the robot exists in the scene."""
     if is_prim_path_valid(robot_path):
         print(f"Robot found at: {robot_path}")
@@ -122,8 +122,9 @@ def initialize_robot(robot_path:str,initial_joint_positions:np.array,stage,simul
     complete_joint_positions = robot.get_joint_positions()
     setting_joint_positions = initial_joint_positions
     complete_joint_positions[:6] = setting_joint_positions
+    complete_joint_positions[6] = 0.
     robot.set_joint_positions(complete_joint_positions)
-    for _ in range(5):
+    for _ in range(10):
         simulation_context.step(render=True)
 
     from modules.control import set_joint_stiffness_damping
@@ -140,6 +141,7 @@ def reset_robot_pose(robot,simulation_context):
                                         -1.571 + random.uniform(-0.087, 0.087), 
                                         0 + random.uniform(-0.087,0.087)])
     complete_joint_positions[:6] = setting_joint_positions
+    complete_joint_positions[6] = 0.
     robot.set_joint_positions(complete_joint_positions)
     for _ in range(10):
         simulation_context.step(render=True)

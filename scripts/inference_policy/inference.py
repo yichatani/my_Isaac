@@ -5,8 +5,9 @@ try:
     import hydra
     import pathlib
     import numpy as np
-    from diffusion_policy_3d.policy.dp3 import DP3
+    from diffusion_policy_3d.policy.ani_dp3 import DP3
     from diffusion_policy_3d.dataset.my_dataset import IsaacZarrDataset
+    # from diffusion_policy_3d.model.phase_encoder import PhaseEncoder
     from diffusion_policy_3d.common.pytorch_util import dict_apply
     from omegaconf import OmegaConf
     OmegaConf.register_new_resolver("eval", eval)
@@ -15,13 +16,6 @@ except:
 ROOT_PATH = os.path.dirname(__file__)
 ROOT_DIR = str(pathlib.Path(__file__).parent.resolve())
 
-
-def check_pickles_keys():
-    payload = torch.load(ROOT_PATH + "/checkpoints/dp3_cube.ckpt", pickle_module=dill, map_location="cpu")
-    print("pickles keys:", payload.get("pickles", {}).keys())
-
-# check_pickles_keys()
-# exit()
 
 def load_model_from_ckpt(ckpt_path):
     print(f"Loading model from checkpoint: {ckpt_path}")
@@ -44,6 +38,26 @@ def load_model_from_ckpt(ckpt_path):
     print(f"Model loaded successfully from {ckpt_path}")
     return model
 
+def prepare_inference_data(data_sample: dict):
+    """
+        Organize data
+    """
+    agent_pos = np.array(data_sample['obs']['agent_pos'], dtype=np.float32)  # (T, 7)
+    point_cloud = np.array(data_sample['obs']['point_cloud'], dtype=np.float32)  # (T, N, 6)
+
+    if agent_pos.shape[0] < 2:
+        raise ValueError("Need at least two timesteps to compute delta.")
+    delta = agent_pos[1:] - agent_pos[:-1]
+    delta = np.concatenate([delta[:1], delta], axis=0)  # shape (T, 7)
+
+    return {
+        'obs': {
+            'agent_pos': agent_pos,
+            'point_cloud': point_cloud,
+            'delta': delta,
+        }
+    }
+
 
 def inference_policy(data_sample,obs_steps=3,action_steps=6):
     """
@@ -53,21 +67,13 @@ def inference_policy(data_sample,obs_steps=3,action_steps=6):
     Returns:
         np.ndarray: The predicted action as a numpy array.
     """
-    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/dp3_cube.ckpt")
+    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/60_val.ckpt")
     assert ckpt_path.is_file(), f"Checkpoint not found: {ckpt_path}"
 
     model = load_model_from_ckpt(ckpt_path)
-    if data_sample == None:
-        raise ValueError("data_sample is None")
-    else:
-        assert len(data_sample['obs']['agent_pos']) == obs_steps, "agent_pos should be of length obs_steps"
-        data_tensor = data_sample
-        data_tensor['obs'] = {
-            'agent_pos': torch.tensor(data_tensor['obs']['agent_pos']),        # -> [1, obs_steps, 7]
-            'point_cloud': torch.tensor(data_tensor['obs']['point_cloud'])     # -> [1, obs_steps, N, 6]
-        }
-        obs_dict = {k: v.unsqueeze(0) for k, v in data_tensor['obs'].items()}
-    obs_dict = dict_apply(obs_dict, lambda x: x.cuda())
+    data_dict = prepare_inference_data(data_sample)
+    obs_dict = dict_apply(data_dict['obs'], lambda x: torch.tensor(x).unsqueeze(0).cuda())
+
 
     with torch.no_grad():
         result = model.predict_action(obs_dict)

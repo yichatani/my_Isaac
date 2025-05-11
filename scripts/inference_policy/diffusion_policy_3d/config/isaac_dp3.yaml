@@ -5,18 +5,19 @@ defaults:
 name: train_dp3
 task_name: ${task.name}
 shape_meta: ${task.shape_meta}
-exp_name: "dp3_test"
+exp_name: "dp3_grasp"
 
-n_obs_steps: 3
-n_action_steps: 6
-horizon: ${eval:${n_obs_steps} + ${n_action_steps} - 1}
+n_obs_steps: 4
+n_action_steps: 8
+# horizon: ${eval:${n_obs_steps} + ${n_action_steps} - 1}
+horizon: 16
 n_latency_steps: 0
 dataset_obs_steps: ${n_obs_steps}
 keypoint_visible_rate: 1.0
 obs_as_global_cond: true
 
 policy:
-  _target_: diffusion_policy_3d.policy.dp3.DP3
+  _target_: diffusion_policy_3d.policy.ani_dp3.DP3
   use_point_crop: true
   condition_type: film
   use_down_condition: true
@@ -32,6 +33,7 @@ policy:
   n_action_steps: ${n_action_steps}
   n_groups: 8
   n_obs_steps: ${n_obs_steps}
+  # phase_latent_dim: 64  # self-add
 
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddim.DDIMScheduler
@@ -71,47 +73,60 @@ ema:
 # ----------------------
 # Logging
 logging:
-  group: dp3_grasping
-  name: dp3_banana
-  project: my_dp3_project
+  group: ${exp_name}
+  project: dp3
+  name: phase_latent_${training.seed}
+  mode: online
+  resume: true
+  tags: 
+    - dp3
+    - diffusion
+    - grasping
 
 # ----------------------
 # Dataloader
 dataloader:
   batch_size: 128
   shuffle: true
-  num_workers: 4
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
 
 val_dataloader:
   batch_size: 128
   shuffle: false
-  num_workers: 4
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
 
 # ----------------------
 # Optimizer
 optimizer:
-  _target_: torch.optim.Adam
-  lr: 3e-4
+  _target_: torch.optim.AdamW
+  lr: 1.0e-4
+  betas: [0.95, 0.999]
+  eps: 1.0e-8
+  weight_decay: 1.0e-6
 
 # ----------------------
 # Training config
 training:
+  device: "cuda:0"
   seed: 42
-  debug: False
-  num_epochs: 1000
+  debug: false
+  resume: true
+  num_epochs: 2000
   gradient_accumulate_every: 1
+  use_ema: true
+  lr_scheduler: cosine
+  lr_warmup_steps: 500
   max_train_steps: null
   max_val_steps: null
-  val_every: 50
-  rollout_every: 9999
-  sample_every: 25
-  checkpoint_every: 25
-  use_ema: true
-  resume: false
-  device: cuda
+  val_every: 1
+  rollout_every: 999999
+  sample_every: 5   # used for train_mse_action
+  checkpoint_every: 5
   tqdm_interval_sec: 1.0
-  lr_scheduler: cosine
-  lr_warmup_steps: 10
 
 # ----------------------
 # Checkpoint config
@@ -121,8 +136,9 @@ checkpoint:
   save_last_snapshot: false
   topk:
     k: 1
-    monitor_key: train_action_mse_error
+    monitor_key: val_loss
     mode: min
+    format_str: 'epoch={epoch:04d}-val_loss={val_loss:.3f}.ckpt'
 
 # ----------------------
 # Hydra logging dir

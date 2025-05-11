@@ -1,16 +1,24 @@
 # diffusion_policy_3d/config/task/my_task.yaml
+defaults:
+  - _self_
 
 name: isaac_grasping
 
 dataset:
   _target_: diffusion_policy_3d.dataset.my_dataset.IsaacZarrDataset
-  zarr_path: data/positive_banana.zarr  # Dataset path
+  zarr_path: data/positive_cube_ani.zarr  # Dataset path
   n_obs_steps: ${n_obs_steps}
   n_action_steps: ${n_action_steps}
+  horizon: ${horizon}
   seed: 42
   val_ratio: 0.1
   max_train_episodes: null
+  pad_before: ${eval:'${n_obs_steps}-1'}
+  pad_after: ${eval:'${n_action_steps}-1'}
 
+# phase_encoder:
+#   input_dim: 14
+#   latent_dim: ${policy.phase_latent_dim}
 
 env_runner:
   _target_: diffusion_policy_3d.env_runner.my_env_runner.DummyRunner

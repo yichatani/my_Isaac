@@ -76,7 +76,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
         initial_width = 0.14
     target_joint_positions_up20 = np.append(target_joint_positions_up20, width_to_finger_angle(initial_width))
 
-    episode_path = create_episode_file(cameras,height=448,width=448)
+    episode_path = create_episode_file(cameras)
     ###1 go to the up20 position
     complete_joint_positions = robot.get_joint_positions()
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_up20,

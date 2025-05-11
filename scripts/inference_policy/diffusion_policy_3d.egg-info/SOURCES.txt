@@ -4,7 +4,7 @@ __init__.py
 inference.py
 setup.py
 __pycache__/__init__.cpython-310.pyc
-__pycache__/inference.cpython-310.pyc
+checkpoints/.gitkeep
 diffusion_policy_3d.egg-info/PKG-INFO
 diffusion_policy_3d.egg-info/SOURCES.txt
 diffusion_policy_3d.egg-info/dependency_links.txt
@@ -75,6 +75,7 @@ diffusion_policy_3d/gym_util/__pycache__/mjpc_wrapper.cpython-38.pyc
 diffusion_policy_3d/gym_util/__pycache__/mujoco_point_cloud.cpython-38.pyc
 diffusion_policy_3d/gym_util/__pycache__/multistep_wrapper.cpython-38.pyc
 diffusion_policy_3d/gym_util/__pycache__/video_recording_wrapper.cpython-38.pyc
+diffusion_policy_3d/model/phase_encoder.py
 diffusion_policy_3d/model/common/dict_of_tensor_mixin.py
 diffusion_policy_3d/model/common/lr_scheduler.py
 diffusion_policy_3d/model/common/module_attr_mixin.py
@@ -106,6 +107,7 @@ diffusion_policy_3d/model/diffusion/__pycache__/positional_embedding.cpython-38.
 diffusion_policy_3d/model/vision/pointnet_extractor.py
 diffusion_policy_3d/model/vision/__pycache__/pointnet_extractor.cpython-310.pyc
 diffusion_policy_3d/model/vision/__pycache__/pointnet_extractor.cpython-38.pyc
+diffusion_policy_3d/policy/ani_dp3.py
 diffusion_policy_3d/policy/base_policy.py
 diffusion_policy_3d/policy/dp3.py
 diffusion_policy_3d/policy/simple_dp3.py
@@ -113,8 +115,10 @@ diffusion_policy_3d/policy/__pycache__/base_policy.cpython-310.pyc
 diffusion_policy_3d/policy/__pycache__/base_policy.cpython-38.pyc
 diffusion_policy_3d/policy/__pycache__/dp3.cpython-310.pyc
 diffusion_policy_3d/policy/__pycache__/dp3.cpython-38.pyc
+pytorch3d_simplified/.TimeRecord
 pytorch3d_simplified/.gitignore
 pytorch3d_simplified/setup.py
+pytorch3d_simplified/dist/pytorch3d-0.7.6-py3.10-linux-x86_64.egg
 pytorch3d_simplified/pytorch3d/_C.cpython-38-x86_64-linux-gnu.so
 pytorch3d_simplified/pytorch3d/__init__.py
 pytorch3d_simplified/pytorch3d.egg-info/PKG-INFO
@@ -122,6 +126,7 @@ pytorch3d_simplified/pytorch3d.egg-info/SOURCES.txt
 pytorch3d_simplified/pytorch3d.egg-info/dependency_links.txt
 pytorch3d_simplified/pytorch3d.egg-info/requires.txt
 pytorch3d_simplified/pytorch3d.egg-info/top_level.txt
+pytorch3d_simplified/pytorch3d/__pycache__/__init__.cpython-310.pyc
 pytorch3d_simplified/pytorch3d/__pycache__/__init__.cpython-38.pyc
 pytorch3d_simplified/pytorch3d/csrc/ext.cpp
 pytorch3d_simplified/pytorch3d/csrc/sample_farthest_points/sample_farthest_points.cu
@@ -139,5 +144,7 @@ pytorch3d_simplified/pytorch3d/csrc/utils/vec3.h
 pytorch3d_simplified/pytorch3d/csrc/utils/warp_reduce.cuh
 pytorch3d_simplified/pytorch3d/ops/__init__.py
 pytorch3d_simplified/pytorch3d/ops/sample_farthest_points.py
+pytorch3d_simplified/pytorch3d/ops/__pycache__/__init__.cpython-310.pyc
 pytorch3d_simplified/pytorch3d/ops/__pycache__/__init__.cpython-38.pyc
+pytorch3d_simplified/pytorch3d/ops/__pycache__/sample_farthest_points.cpython-310.pyc
 pytorch3d_simplified/pytorch3d/ops/__pycache__/sample_farthest_points.cpython-38.pyc

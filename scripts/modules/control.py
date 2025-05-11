@@ -137,7 +137,7 @@ def control_robot(robot, cameras, start_position, target_position, simulation_co
     return complete_joint_positions
 
 
-def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,simulation_context,data_sample)->dict:
+def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,simulation_context,data_sample,obs_steps)->dict:
     """To control the robot by policy
         7 dimension:
             6 dimension: robot joints
@@ -148,7 +148,7 @@ def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,s
         complete_joint_positions = robot.get_joint_positions()
         complete_joint_positions[:7] = action
         robot.apply_action(ArticulationAction(joint_positions=complete_joint_positions))
-        data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=2)
+        data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=obs_steps)
         for _ in range(15):
             simulation_context.step(render=True)
     return data_sample
