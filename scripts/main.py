@@ -58,7 +58,7 @@ from modules.initial_set import initialize_robot, initialize_simulation_context,
 from modules.record_data import observing
 from modules.motion_planning import planning_grasp_path
 from inference_policy.inference import inference_policy
-# from Pre_trained_graspnet.inference import pretrained_graspnet
+
 
 ### file_paths
 usd_file_path = os.path.join(ROOT_DIR, "../ur10e_grasp.usd")
@@ -131,49 +131,42 @@ def main(is_policy=False, self_trained_model=None) -> None:
             reset_obj_pose(obj_prim_paths,simulation_context)
             reset_robot_pose(robot,simulation_context)
             data_sample = None
-            first_observation = True
-            while True:
-            # for _ in range(200):
-                if first_observation == True:
-                    data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=2)
-                    first_observation = False
-                else:
-                    actions = inference_policy(data_sample,obs_steps=2,action_steps=3)
-                    joint_actions = []
-                    for action in actions:
-                        T_quat = euler_angles_to_quats(action[3:6])
-                        T_joint_state, succ = AKSolver.compute_inverse_kinematics(action[:3], T_quat)
-                        if not succ:
-                            print("IK failed, skipping")
-                            continue
-                        joint_action = T_joint_state.joint_positions
-                        joint_action = np.concatenate((joint_action, action[6:7]), axis=0)
-                        joint_actions.append(joint_action)
-                    joint_actions = np.stack(joint_actions, axis=0)
-                    if len(joint_actions) == 0:
-                        print("All IKs failed, skipping this step.")
-                        break
-                    assert joint_actions.shape[0] == actions.shape[0], "Mismatch in action step count!"
-                    data_sample = control_robot_by_policy(robot,record_camera_dict,joint_actions,simulation_context,data_sample)
+            data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=4)
+            for _ in range(11):
+                actions = inference_policy(data_sample,obs_steps=4,action_steps=3)
+                joint_actions = []
+                for action in actions:
+                    T_quat = euler_angles_to_quats(action[3:6])
+                    T_joint_state, succ = AKSolver.compute_inverse_kinematics(action[:3], T_quat)
+                    if not succ:
+                        print("IK failed, skipping")
+                        continue
+                    joint_action = T_joint_state.joint_positions
+                    joint_action = np.concatenate((joint_action, action[6:7]), axis=0)
+                    joint_actions.append(joint_action)
+                joint_actions = np.stack(joint_actions, axis=0)
+                if len(joint_actions) == 0:
+                    print("All IKs failed, skipping this step.")
+                    break
+                assert joint_actions.shape[0] == actions.shape[0], "Mismatch in action step count!"
+                data_sample = control_robot_by_policy(robot,record_camera_dict,joint_actions,simulation_context,data_sample,obs_steps=4)
 
         else:
             reset_obj_pose(obj_prim_paths,simulation_context)
             for _ in range(10):
                 if check_obj_pose_err(obj_prim_paths):
-                    # reset_obj_pose(obj_prim_paths,simulation_context)
                     break
                 reset_robot_pose(robot,simulation_context)
                 data_dict = rgb_and_depth(sensor,simulation_context)
-                # any_data_dict = any_grasp(data_dict)
                 if self_trained_model is not None:
-                    continue
                     assert self_trained_model in ["1billion.tar", "mega.tar"], "self_trained_model invalid"
                     print(f"<<<Using self-trained model: {self_trained_model}>>>")
+                    from Pre_trained_graspnet.inference import pretrained_graspnet
                     any_data_dict = pretrained_graspnet(data_dict, chosen_model=self_trained_model)
                 else:
                     print(f"<<<Using AnyGrasp>>>")
                     any_data_dict = any_grasp(data_dict)
-                if any_data_dict is False:
+                if not any_data_dict: 
                     break
                 plan_succ = planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,
                                     initial_joint_positions,ending_joint_positions)
@@ -189,8 +182,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = True)
-    # main(is_policy = False, self_trained_model="1billion.tar")
+    main(is_policy = False)
     
 
     
