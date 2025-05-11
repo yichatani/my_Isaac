@@ -1,5 +1,9 @@
+# import diffusion_policy_3d.model.vision.pointnet_extractor as pointnet_module
+# print(pointnet_module.__file__)
+
 from typing import Dict
 import math
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,8 +12,8 @@ from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from termcolor import cprint
 import copy
 import time
+from termcolor import cprint
 import pytorch3d.ops as torch3d_ops
-
 from diffusion_policy_3d.model.common.normalizer import LinearNormalizer
 from diffusion_policy_3d.policy.base_policy import BasePolicy
 from diffusion_policy_3d.model.diffusion.conditional_unet1d import ConditionalUnet1D
@@ -40,7 +44,7 @@ class DP3(BasePolicy):
             use_pc_color=False,
             pointnet_type="pointnet",
             pointcloud_encoder_cfg=None,
-            phase_latent_dim=0,
+            # phase_latent_dim=0,
             # parameters passed to step
             **kwargs):
         super().__init__()
@@ -56,10 +60,11 @@ class DP3(BasePolicy):
             action_dim = action_shape[0] * action_shape[1]
         else:
             raise NotImplementedError(f"Unsupported action shape {action_shape}")
-            
+        
         obs_shape_meta = shape_meta['obs']
         obs_dict = dict_apply(obs_shape_meta, lambda x: x['shape'])
-
+        # cprint(obs_dict)
+        # exit()
 
         obs_encoder = DP3Encoder(observation_space=obs_dict,
                                                    img_crop_shape=crop_shape,
@@ -68,10 +73,12 @@ class DP3(BasePolicy):
                                                 use_pc_color=use_pc_color,
                                                 pointnet_type=pointnet_type,
                                                 )
-
         # create diffusion model
         obs_feature_dim = obs_encoder.output_shape()
+        # print(f"obs_featdim: {obs_feature_dim}")
         input_dim = action_dim + obs_feature_dim
+        # print(f"input_dim: {input_dim}")
+        # exit()
         global_cond_dim = None
         if obs_as_global_cond:
             input_dim = action_dim
@@ -79,13 +86,12 @@ class DP3(BasePolicy):
                 global_cond_dim = obs_feature_dim
             else:
                 global_cond_dim = obs_feature_dim * n_obs_steps
-            global_cond_dim += phase_latent_dim 
+            # global_cond_dim += phase_latent_dim
 
         self.use_pc_color = use_pc_color
         self.pointnet_type = pointnet_type
         cprint(f"[DiffusionUnetHybridPointcloudPolicy] use_pc_color: {self.use_pc_color}", "yellow")
         cprint(f"[DiffusionUnetHybridPointcloudPolicy] pointnet_type: {self.pointnet_type}", "yellow")
-
 
 
         model = ConditionalUnet1D(

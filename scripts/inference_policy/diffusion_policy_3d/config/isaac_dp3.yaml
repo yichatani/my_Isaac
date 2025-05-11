@@ -7,9 +7,10 @@ task_name: ${task.name}
 shape_meta: ${task.shape_meta}
 exp_name: "dp3_grasp"
 
-n_obs_steps: 2
-n_action_steps: 3
-horizon: ${eval:${n_obs_steps} + ${n_action_steps} - 1}
+n_obs_steps: 4
+n_action_steps: 8
+# horizon: ${eval:${n_obs_steps} + ${n_action_steps} - 1}
+horizon: 16
 n_latency_steps: 0
 dataset_obs_steps: ${n_obs_steps}
 keypoint_visible_rate: 1.0
@@ -32,7 +33,7 @@ policy:
   n_action_steps: ${n_action_steps}
   n_groups: 8
   n_obs_steps: ${n_obs_steps}
-  phase_latent_dim: 64
+  # phase_latent_dim: 64  # self-add
 
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddim.DDIMScheduler
@@ -121,10 +122,10 @@ training:
   lr_warmup_steps: 500
   max_train_steps: null
   max_val_steps: null
-  val_every: 5
+  val_every: 1
   rollout_every: 999999
-  sample_every: 5
-  checkpoint_every: 200
+  sample_every: 5   # used for train_mse_action
+  checkpoint_every: 5
   tqdm_interval_sec: 1.0
 
 # ----------------------
@@ -135,9 +136,9 @@ checkpoint:
   save_last_snapshot: false
   topk:
     k: 1
-    monitor_key: train_action_mse_error
+    monitor_key: val_loss
     mode: min
-    format_str: 'epoch={epoch:04d}-train_mse={train_action_mse_error:.3f}.ckpt'
+    format_str: 'epoch={epoch:04d}-val_loss={val_loss:.3f}.ckpt'
 
 # ----------------------
 # Hydra logging dir
