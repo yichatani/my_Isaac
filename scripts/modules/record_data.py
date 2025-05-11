@@ -26,7 +26,92 @@ def resize_images(rgb, depth):
     depth_resized = cv2.resize(depth, (TARGET_WIDTH, TARGET_HEIGHT), interpolation=cv2.INTER_NEAREST)  
     return rgb_resized, depth_resized
 
-def create_episode_file(cameras, height, width):
+def create_episode_file_c(cameras, height=TARGET_HEIGHT, width=TARGET_WIDTH):
+    """
+        depth times 1000, to save by uint16
+    """
+    num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
+    episode_path = os.path.join(DATA_DIR, f"episode_{num_files}.h5")
+    print(f"Saving to: {episode_path}")
+    
+    if not os.path.exists(episode_path):
+        with h5py.File(episode_path, "w") as f:
+            print("Creating episode file...")
+
+            # Global index and trajectory-related datasets
+            f.create_dataset("index", shape=(0,), maxshape=(None,), dtype='i4')
+            f.create_dataset("agent_pos", shape=(0, 7), maxshape=(None, 7), dtype=np.float32)
+            f.create_dataset("action", shape=(0, 7), maxshape=(None, 7), dtype=np.float32)
+            f.create_dataset("label", shape=(1,), dtype=np.uint8)
+
+            for cam in cameras.keys():
+                # RGB and Depth
+                f.create_dataset(f"{cam}/rgb", shape=(0, height, width, 3), maxshape=(None, height, width, 3),
+                                 dtype=np.uint8, compression="lzf")
+                f.create_dataset(f"{cam}/depth", shape=(0, height, width), maxshape=(None, height, width),
+                                 dtype=np.uint16, compression="lzf")
+
+    print(f"Episode file created: {episode_path}")
+    return episode_path
+
+
+def recording_c(robot, cameras, episode_path, simulation_context):
+    """
+        depth times 1000, to save by uint16
+    """
+    assert robot is not None, "Failed to initialize Articulation"
+    
+    with h5py.File(episode_path, "a") as f:
+        
+        index = f["index"].shape[0]
+        f["index"].resize((index + 1,))
+        f["index"][-1] = index
+
+        # Record action
+        try:
+            # action = record_robot_7dofs(robot)
+            action = record_robot_end_effector_pose(robot)
+            if action is None or len(action) != 7:
+                raise ValueError("Invalid action data received")
+        except Exception as e:
+            print(f"Error retrieving robot state: {e}")
+            action = None
+
+        if action is not None:
+            f["action"].resize((index + 1, 7))
+            f["action"][-1] = action
+
+            f["agent_pos"].resize((index + 1, 7))
+            if f["action"].shape[0] >=2:
+                f["agent_pos"][-1] = f["action"][-2]
+            else:
+                f["agent_pos"][-1] = f["action"][-1]
+        else:
+            print("⚠️ Skipping frame due to invalid action.")
+            return
+
+
+        for cam in cameras.keys():
+            data_dict = rgb_and_depth(cameras[cam], simulation_context)
+            rgb = data_dict["rgb"].astype(np.uint8)
+            depth_raw = data_dict["depth"]
+            depth_raw = (depth_raw * 1000).astype(np.uint16)
+
+            f[f"{cam}/rgb"].resize((index + 1, *rgb.shape))
+            f[f"{cam}/rgb"][-1] = rgb
+
+            f[f"{cam}/depth"].resize((index + 1, *depth_raw.shape))
+            f[f"{cam}/depth"][-1] = depth_raw
+
+        if index % 10 == 0:
+            f.flush()
+        print(f"Recording frame {index} done.")
+
+
+def create_episode_file(cameras, height=TARGET_HEIGHT, width=TARGET_WIDTH): 
+    """
+        v1, No compression
+    """
     num_files = len([f for f in os.listdir(DATA_DIR) if os.path.isfile(os.path.join(DATA_DIR, f))])
     episode_path = os.path.join(DATA_DIR, f"episode_{num_files}.h5")
     print(f"Saving to: {episode_path}")
@@ -53,6 +138,9 @@ def create_episode_file(cameras, height, width):
 
 
 def recording(robot, cameras, episode_path, simulation_context):
+    """
+        v1, No compression
+    """
     assert robot is not None, "Failed to initialize Articulation"
     
     with h5py.File(episode_path, "a") as f:
