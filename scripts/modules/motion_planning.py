@@ -3,6 +3,7 @@ import yaml
 import h5py
 import math
 import numpy as np
+from termcolor import cprint
 from omni.isaac.core.prims import XFormPrim # type: ignore
 from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, euler_angles_to_quats,quats_to_euler_angles # type: ignore
 from modules.control import control_gripper,control_robot,start_force_control_gripper, \
@@ -95,7 +96,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
         ###3 close the gripper
         if _ in selected_steps:
             recording(robot, cameras, episode_path, simulation_context)
-    ###4 go to the end joint position again
+    ###4 go to the end joint position to check if success or not
     target_joint_positions_end = np.append(target_joint_positions_end, robot.get_joint_positions()[6])
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_end,
                                              simulation_context,episode_path,is_record=True,steps=30)
@@ -115,9 +116,9 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
         
         if if_grasping_success(obj_prim_paths):
             label_dataset[0] = 1
-            print("####Success!####")
+            cprint("####Success!####","blue")
         else:
-            print("<<<<Faile!>>>>>>")
+            cprint("<<<<Faile!>>>>>>","red")
             
     print("Updated label dataset in", episode_path)
 
