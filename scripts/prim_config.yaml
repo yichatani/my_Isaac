@@ -13,11 +13,11 @@ obj_prim_paths:
   - path: "/nvidia_cube"
     enabled: false
   - path: "/SM_Mug_A2"
-    enabled: false
+    enabled: true
   - path: "/_11_banana"
     enabled: false
   - path: "/_35_power_drill"
     enabled: false
   - path: "/multi_color_cube_instanceable"
-    enabled: true
+    enabled: false
 

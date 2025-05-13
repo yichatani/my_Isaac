@@ -43,12 +43,11 @@ def reset_obj_pose(prim_paths,simulation_context):
     for prim_path in prim_paths:
         obj = XFormPrim(prim_path)
         euler_angles = [
-            0,
-            0,
-            # random.uniform(-math.pi/2, math.pi/2),
-            # random.uniform(-math.pi/2, math.pi/2),
+            # 0,
+            # 0,
             random.uniform(-math.pi, math.pi),
-            # 0
+            0,
+            0
         ]
         obj.set_world_pose(
             position=[
@@ -122,7 +121,7 @@ def initialize_robot(robot_path:str,initial_joint_positions:np.array,stage,simul
     complete_joint_positions = robot.get_joint_positions()
     setting_joint_positions = initial_joint_positions
     complete_joint_positions[:6] = setting_joint_positions
-    complete_joint_positions[6] = 0.
+    complete_joint_positions[6] = 0
     robot.set_joint_positions(complete_joint_positions)
     for _ in range(10):
         simulation_context.step(render=True)

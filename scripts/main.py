@@ -132,8 +132,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
             reset_robot_pose(robot,simulation_context)
             data_sample = None
             data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=4)
-            for _ in range(11):
-                actions = inference_policy(data_sample,obs_steps=4,action_steps=3)
+            for _ in range(14):
+                actions = inference_policy(data_sample,obs_steps=4,action_steps=2)
                 joint_actions = []
                 for action in actions:
                     T_quat = euler_angles_to_quats(action[3:6])
@@ -150,7 +150,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
                     break
                 assert joint_actions.shape[0] == actions.shape[0], "Mismatch in action step count!"
                 data_sample = control_robot_by_policy(robot,record_camera_dict,joint_actions,simulation_context,data_sample,obs_steps=4)
-
+                for _ in range(10):
+                    simulation_context.step(render=True)
         else:
             reset_obj_pose(obj_prim_paths,simulation_context)
             for _ in range(10):
