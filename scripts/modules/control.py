@@ -57,7 +57,7 @@ def control_gripper(robot, cameras, finger_start, finger_target,
         for _ in range(1):
             simulation_context.step(render=True)
         if is_record:
-            recording(robot,cameras,episode_path,simulation_context)
+            recording(robot,cameras,episode_path,simulation_context,is_compression=True)
     complete_joint_positions = robot.get_joint_positions()
     return complete_joint_positions
 
@@ -132,7 +132,7 @@ def control_robot(robot, cameras, start_position, target_position, simulation_co
         for _ in range(1):
             simulation_context.step(render=True)
         if is_record:
-            recording(robot, cameras,episode_path,simulation_context)
+            recording(robot, cameras,episode_path,simulation_context,is_compression=True)
     complete_joint_positions = robot.get_joint_positions()
     return complete_joint_positions
 
@@ -168,6 +168,6 @@ def control_both_robot_gripper(robot, cameras, start_joint_position, target_join
         for _ in range(3):
             simulation_context.step(render=True)
         if is_record:
-            recording(robot, cameras,episode_path,simulation_context)
+            recording(robot, cameras,episode_path,simulation_context,is_compression=True)
     complete_joint_positions = robot.get_joint_positions()
     return complete_joint_positions
