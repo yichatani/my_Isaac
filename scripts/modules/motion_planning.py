@@ -57,9 +57,12 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     target_translation_up20 = target_translation + np.array([0,0,0.2])
     target_rotation_up20 = target_rotation
 
-    target_translation_end = np.array([target_translation[0]+random.uniform(-0.1,0.1),
-                                       target_translation[1]+random.uniform(-0.1,0.1),
-                                       0.7+random.uniform(0,0.1)])
+    # target_translation_end = np.array([target_translation[0]+random.uniform(-0.1,0.1),
+    #                                    target_translation[1]+random.uniform(-0.1,0.1),
+    #                                    0.7+random.uniform(0,0.1)])
+    target_translation_end = np.array([target_translation[0],
+                                       target_translation[1],
+                                       0.6])
     target_rotation_end = target_rotation
 
     target_joint_positions = T_pose_2_joints(target_translation, target_rotation, AKSolver)
@@ -75,22 +78,25 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
         print("No valid target end joint positions found.")
         return False
 
-    initial_width = any_data_dict["width"] + 0.025
+    initial_width = any_data_dict["width"] + 0.015
     if initial_width > 0.14:
         initial_width = 0.14
     target_joint_positions_up20 = np.append(target_joint_positions_up20, width_to_finger_angle(initial_width))
+    target_joint_positions = np.append(target_joint_positions, width_to_finger_angle(initial_width))
 
     episode_path = create_episode_file(cameras,is_compression=True)
     random_steps = int(random.uniform(0,10)) # Add ramdomness to action steps, prevent overfitting
+    random_steps = 0 # To be easier now
     ###1 go to the up20 position
     complete_joint_positions = robot.get_joint_positions()
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_up20,
-                                             simulation_context,episode_path,is_record=True,steps=50-random_steps)
-    
-    target_joint_positions = np.append(target_joint_positions, width_to_finger_angle(initial_width))
+                                             simulation_context,episode_path,is_record=True,steps=40-random_steps)
     ###2 go to the target position
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions,
-                                             simulation_context,episode_path,is_record=True, steps=20)
+                                             simulation_context,episode_path,is_record=True, steps=15)
+
+    # complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions,
+    #                                           simulation_context,episode_path,is_record=True, steps=60-random_steps)
     
     start_force_control_gripper(robot)
     # select 16 steps to record
@@ -103,7 +109,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     ###4 go to the end joint position
     target_joint_positions_end = np.append(target_joint_positions_end, robot.get_joint_positions()[6])
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_end,
-                                             simulation_context,episode_path,is_record=True,steps=20+random_steps)
+                                             simulation_context,episode_path,is_record=True,steps=10+random_steps)
     
     complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],ending_joint_positions,
                                              simulation_context,episode_path,is_record=False,steps=40)
