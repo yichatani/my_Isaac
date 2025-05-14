@@ -165,7 +165,7 @@ def control_both_robot_gripper(robot, cameras, start_joint_position, target_join
         complete_joint_positions[:7] = joint_positions
         action = ArticulationAction(complete_joint_positions)
         robot.apply_action(action)
-        for _ in range(3):
+        for _ in range(5):
             simulation_context.step(render=True)
         if is_record:
             recording(robot, cameras,episode_path,simulation_context,is_compression=True)
