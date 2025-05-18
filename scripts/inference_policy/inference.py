@@ -23,6 +23,9 @@ def load_model_from_ckpt(ckpt_path):
     # print(payload.keys())
     cfg = payload['cfg']
 
+    # print("########")
+    print(cfg.task.dataset)
+    # exit()
     model: DP3 = hydra.utils.instantiate(cfg.policy)
     state_dict = payload['state_dicts'].get('ema_model', payload['state_dicts']['model'])
     model.load_state_dict(state_dict)
@@ -44,11 +47,15 @@ def prepare_inference_data(data_sample: dict):
     """
     agent_pos = np.array(data_sample['obs']['agent_pos'], dtype=np.float32)  # (T, 7)
     point_cloud = np.array(data_sample['obs']['point_cloud'], dtype=np.float32)  # (T, N, 6)
+    delta = np.array(data_sample['obs']['delta'], dtype=np.float32)  # (T, 7)
 
-    if agent_pos.shape[0] < 2:
-        raise ValueError("Need at least two timesteps to compute delta.")
-    delta = agent_pos[1:] - agent_pos[:-1]
-    delta = np.concatenate([delta[:1], delta], axis=0)  # shape (T, 7)
+    # if agent_pos.shape[0] < 2:
+    #     raise ValueError("Need at least two timesteps to compute delta.")
+    # delta = agent_pos[1:] - agent_pos[:-1]
+
+    # # here might need be ajust to padding 0
+    # zero_pad = np.zeros_like(delta[:1])
+    # delta = np.concatenate([zero_pad, delta], axis=0)  # shape (T, 7)
 
     return {
         'obs': {
@@ -67,7 +74,7 @@ def inference_policy(data_sample,obs_steps=3,action_steps=6):
     Returns:
         np.ndarray: The predicted action as a numpy array.
     """
-    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/baseline_cube.ckpt")
+    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/60_val.ckpt")
     assert ckpt_path.is_file(), f"Checkpoint not found: {ckpt_path}"
 
     model = load_model_from_ckpt(ckpt_path)

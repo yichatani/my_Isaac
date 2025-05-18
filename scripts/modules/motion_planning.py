@@ -106,7 +106,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
                                              simulation_context,episode_path,is_record=True,steps=20+random_steps)
     
     complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],ending_joint_positions,
-                                             simulation_context,episode_path,is_record=False,steps=40)
+                                             simulation_context,episode_path,is_record=False,steps=35)
 
     with h5py.File(episode_path, "a") as f:
         if "label" not in f:

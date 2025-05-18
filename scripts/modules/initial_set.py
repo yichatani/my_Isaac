@@ -50,13 +50,15 @@ def reset_obj_pose(prim_paths,simulation_context):
             0
         ]
         obj.set_world_pose(
+            # position=[
+            #     random.uniform(0.6,0.9),
+            #     random.uniform(-0.11,0.4),
+            #     random.uniform(0.90,1.00)             
+            # ],
             position=[
-                # random.uniform(0.33, 1.10), 
-                # random.uniform(-0.15,0.55), 
-                # random.uniform(0.8,0.85)
-                random.uniform(0.6,0.9),
-                random.uniform(-0.11,0.4),
-                random.uniform(0.90,1.00)             
+                0.75,
+                0.15,
+                0.9             
             ],
             orientation = tuple(R.from_euler('xyz', euler_angles).as_quat())
         )

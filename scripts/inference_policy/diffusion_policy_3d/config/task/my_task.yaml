@@ -6,7 +6,7 @@ name: isaac_grasping
 
 dataset:
   _target_: diffusion_policy_3d.dataset.my_dataset.IsaacZarrDataset
-  zarr_path: data/positive_cube_ani.zarr  # Dataset path
+  zarr_path: data/simple_cup.zarr  # Dataset path
   n_obs_steps: ${n_obs_steps}
   n_action_steps: ${n_action_steps}
   horizon: ${horizon}
@@ -16,9 +16,6 @@ dataset:
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}
 
-# phase_encoder:
-#   input_dim: 14
-#   latent_dim: ${policy.phase_latent_dim}
 
 env_runner:
   _target_: diffusion_policy_3d.env_runner.my_env_runner.DummyRunner

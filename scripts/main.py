@@ -57,7 +57,7 @@ from modules.initial_set import initialize_robot, initialize_simulation_context,
     rgb_and_depth,reset_obj_pose,check_obj_pose_err,initialize_world
 from modules.record_data import observing
 from modules.motion_planning import planning_grasp_path
-from inference_policy.inference import inference_policy
+from inference_policy.inference_origin import inference_policy
 
 
 ### file_paths
@@ -132,8 +132,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
             reset_robot_pose(robot,simulation_context)
             data_sample = None
             data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=4)
-            for _ in range(14):
-                actions = inference_policy(data_sample,obs_steps=4,action_steps=2)
+            for _ in range(40):
+                actions = inference_policy(data_sample,obs_steps=2,action_steps=3)
                 joint_actions = []
                 for action in actions:
                     T_quat = euler_angles_to_quats(action[3:6])
@@ -153,10 +153,11 @@ def main(is_policy=False, self_trained_model=None) -> None:
                 for _ in range(10):
                     simulation_context.step(render=True)
         else:
-            reset_obj_pose(obj_prim_paths,simulation_context)
+            # reset_obj_pose(obj_prim_paths,simulation_context)
             for _ in range(10):
-                if check_obj_pose_err(obj_prim_paths):
-                    break
+                # if check_obj_pose_err(obj_prim_paths):
+                #     break
+                reset_obj_pose(obj_prim_paths,simulation_context)
                 reset_robot_pose(robot,simulation_context)
                 data_dict = rgb_and_depth(sensor,simulation_context)
                 if self_trained_model is not None:
@@ -183,7 +184,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = False)
+    main(is_policy = True)
     
 
     
