@@ -339,9 +339,15 @@ class ConditionalUnet1D(nn.Module):
             x = upsample(x)
 
 
+        # x = self.final_conv(x)
+
+        # x = einops.rearrange(x, 'b t h -> b h t')
+
+        # return x
+    
+        T = sample.shape[2]
         x = self.final_conv(x)
-
         x = einops.rearrange(x, 'b t h -> b h t')
-
+        x = x[:, :T, :]                                
         return x
 

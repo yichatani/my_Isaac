@@ -65,7 +65,7 @@ def inference_policy(data_sample,obs_steps=3,action_steps=6):
     Returns:
         np.ndarray: The predicted action as a numpy array.
     """
-    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/simple_cup.ckpt")
+    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/cube_ani.ckpt")
     assert ckpt_path.is_file(), f"Checkpoint not found: {ckpt_path}"
 
     model = load_model_from_ckpt(ckpt_path)
