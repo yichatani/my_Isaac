@@ -57,7 +57,7 @@ def prepare_inference_data(data_sample: dict):
     }
 
 
-def inference_policy(data_sample,obs_steps=3,action_steps=6):
+def inference_policy(data_sample,action_steps=6):
     """
     Perform inference using the loaded model and configuration.
     Args:
@@ -65,7 +65,7 @@ def inference_policy(data_sample,obs_steps=3,action_steps=6):
     Returns:
         np.ndarray: The predicted action as a numpy array.
     """
-    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/cube_ani.ckpt")
+    ckpt_path = pathlib.Path(ROOT_PATH + "/checkpoints/cup.ckpt")
     assert ckpt_path.is_file(), f"Checkpoint not found: {ckpt_path}"
 
     model = load_model_from_ckpt(ckpt_path)
