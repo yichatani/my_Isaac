@@ -67,6 +67,21 @@ class DP3(BasePolicy):
                                                 use_pc_color=use_pc_color,
                                                 pointnet_type=pointnet_type,
                                                 )
+        
+        # obs_encoder = DP3Encoder(
+        #     observation_space=obs_dict,
+        #     point_input_dim=3,
+        #     use_pc_color=False,
+        #     state_mlp_size=(128, 64), # state_mlp: 7 -> 128 -> 64. processed_state_dim will be 64
+        #     adv_pn_per_point_feat_dim=128, # Attention 内部维度
+        #     adv_pn_final_out_dim=256,      # state-aware 点云特征的输出维度
+        #     adv_pn_num_attn_heads=4,
+        #     adv_pn_use_layernorm_in_point_mlp=True,
+        #     adv_pn_point_mlp_hidden_dims=[64, 128], # point_mlp_initial: 3 -> 64 -> 128 -> 128 (per_point_feat_dim)
+        #     concatenate_final_state=True, # 决定是否将 state_aware_pc_feat (256) 和 processed_state (64) 拼接
+        #     final_fusion_mlp_arch=[256, 128] # 如果拼接 (256+64=320), 则 320 -> 256 -> 128. 最终输出128.
+        #                                     # 如果 concatenate_final_state=False, 这个参数会被忽略
+        # )
 
         # create diffusion model
         obs_feature_dim = obs_encoder.output_shape()
