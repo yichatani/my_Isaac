@@ -80,7 +80,7 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
 
     # make sure the wrist don't rotate too much, to prevent collision
     target_joint_positions = target_joint_positions.copy()
-    target_up20_joint_positions = target_up20_joint_positions.copy()
+    target_joint_positions_up20 = target_joint_positions_up20.copy()
     if abs(target_joint_positions[5]) > math.pi/2:
         target_joint_positions[5] = abs(target_joint_positions[5]) - math.pi
     if abs(target_joint_positions_up20[5]) > math.pi/2:
