@@ -147,6 +147,7 @@ def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,s
     for action in actions:
         complete_joint_positions = robot.get_joint_positions()
         complete_joint_positions[:7] = action
+        complete_joint_positions[6] = complete_joint_positions[6] - 0.02
         robot.apply_action(ArticulationAction(joint_positions=complete_joint_positions))
         data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=obs_steps)
         for _ in range(15):

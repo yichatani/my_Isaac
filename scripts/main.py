@@ -132,8 +132,8 @@ def main(is_policy=False, self_trained_model=None) -> None:
             reset_robot_pose(robot,simulation_context)
             data_sample = None
             data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=4)
-            for _ in range(15):
-                actions = inference_policy(data_sample,obs_steps=2,action_steps=3)
+            for _ in range(14):
+                actions = inference_policy(data_sample,action_steps=3)
                 joint_actions = []
                 for action in actions:
                     T_quat = euler_angles_to_quats(action[3:6])
