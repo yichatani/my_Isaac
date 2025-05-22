@@ -40,9 +40,10 @@ import sys
 import yaml
 import signal
 import torch
-import time
+import math
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.spatial.transform import Rotation as R
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 from omni.isaac.core.utils.stage import open_stage, get_current_stage # type: ignore
 from omni.isaac.core.utils.extensions import get_extension_path_from_name # type: ignore
@@ -54,10 +55,11 @@ from omni.isaac.motion_generation import ArticulationKinematicsSolver, LulaKinem
 from modules.grasp_generator import any_grasp
 from modules.control import control_robot_by_policy
 from modules.initial_set import initialize_robot, initialize_simulation_context,initial_camera,reset_robot_pose, \
-    rgb_and_depth,reset_obj_pose,check_obj_pose_err,initialize_world
+    rgb_and_depth,reset_obj_pose,check_obj_pose_err,initialize_world, set_initial_joint_positions
 from modules.record_data import observing
 from modules.motion_planning import planning_grasp_path
 from inference_policy.inference_origin import inference_policy
+from modules.transform import T_pose_2_joints
 
 
 ### file_paths
@@ -103,15 +105,26 @@ def main(is_policy=False, self_trained_model=None) -> None:
     simulation_context = initialize_world(dt=1.0/60.0)
     
     # Initial robot
-    initial_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
-    ending_joint_positions = np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0])
-    robot = initialize_robot(robot_path,initial_joint_positions,stage,simulation_context)
+    
+    robot = initialize_robot(robot_path)
     LulaKSolver = LulaKinematicsSolver(
         robot_description_path=yaml_path,
         urdf_path=urdf_path
     )
     # print("KSolver get_all_frame_names:",LulaKSolver.get_all_frame_names())
     AKSolver = ArticulationKinematicsSolver(robot,LulaKSolver,"tool0")
+
+    initial_translation = np.array([0.75, 0.15, 0.9])
+    initial_euler = np.array([-math.pi, 0., -math.pi/2])
+    initial_rotation = R.from_euler('xyz', initial_euler).as_matrix()
+    initial_joint_positions = T_pose_2_joints(initial_translation, initial_rotation, AKSolver)
+
+    initial_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+
+    set_initial_joint_positions(robot,initial_joint_positions,stage,simulation_context)
+
+    # initial_joint_positions = np.array([0, -1.447, 0.749, -0.873, -1.571, 0])
+    # ending_joint_positions = np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0])
 
     global camera_paths
     sensor = initial_camera(camera_paths["sensor"],60,(1920,1080))
@@ -129,7 +142,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
                     
         if is_policy:
             reset_obj_pose(obj_prim_paths,simulation_context)
-            reset_robot_pose(robot,simulation_context)
+            reset_robot_pose(robot,initial_joint_positions,simulation_context)
             data_sample = None
             data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=4)
             for _ in range(14):
@@ -158,7 +171,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
                 # if check_obj_pose_err(obj_prim_paths):
                 #     break
                 reset_obj_pose(obj_prim_paths,simulation_context)
-                reset_robot_pose(robot,simulation_context)
+                reset_robot_pose(robot,initial_joint_positions,simulation_context)
                 data_dict = rgb_and_depth(sensor,simulation_context)
                 if self_trained_model is not None:
                     assert self_trained_model in ["1billion.tar", "mega.tar"], "self_trained_model invalid"
@@ -171,7 +184,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
                 if not any_data_dict: 
                     break
                 plan_succ = planning_grasp_path(robot,record_camera_dict, any_data_dict,AKSolver,simulation_context,
-                                    initial_joint_positions,ending_joint_positions)
+                                    initial_joint_positions)
                 if not plan_succ:
                     print("Planning failed, skipping")
                     continue
@@ -184,7 +197,7 @@ def main(is_policy=False, self_trained_model=None) -> None:
 
 if __name__ == "__main__":
     
-    main(is_policy = True)
+    main(is_policy = False)
     
 
     

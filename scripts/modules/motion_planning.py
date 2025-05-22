@@ -45,8 +45,7 @@ def if_grasping_success(prim_paths:list) -> bool:
 
 
 def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
-                        initial_joint_positions:np.array=np.array([0, -1.447, 0.749, -0.873, -1.571, 0]),
-                        ending_joint_positions:np.array=np.array([-0.85, -1.147, 0.549, -0.873, -1.571, 0]))-> bool:
+                        initial_joint_positions:np.array=np.array([0, -1.447, 0.749, -0.873, -1.571, 0]))-> bool:
     """
     Plan the grasp path for the robot.
     """
@@ -57,11 +56,8 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     target_translation_up20 = target_translation + np.array([0,0,0.2])
     target_rotation_up20 = target_rotation
 
-    # target_translation_end = np.array([target_translation[0]+random.uniform(-0.1,0.1),
-    #                                    target_translation[1]+random.uniform(-0.1,0.1),
-    #                                    0.7+random.uniform(0,0.1)])
-    target_translation_end = np.array([target_translation[0],
-                                       target_translation[1],
+    target_translation_end = np.array([0.8,
+                                       -0.4,
                                        0.7])
     target_rotation_end = target_rotation
 
@@ -81,6 +77,13 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     initial_width = any_data_dict["width"] + 0.015
     if initial_width > 0.14:
         initial_width = 0.14
+
+    # make sure the wrist don't rotate too much, to prevent collision
+    if abs(target_joint_positions[5]) > math.pi/2:
+        target_joint_positions[5] = abs(target_joint_positions[5]) - math.pi
+    if abs(target_joint_positions_up20[5]) > math.pi/2:
+        target_joint_positions_up20[5] = abs(target_joint_positions_up20[5]) - math.pi
+
     target_joint_positions_up20 = np.append(target_joint_positions_up20, width_to_finger_angle(initial_width))
     target_joint_positions = np.append(target_joint_positions, width_to_finger_angle(initial_width))
 
@@ -90,14 +93,11 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
     ###1 go to the up20 position
     complete_joint_positions = robot.get_joint_positions()
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_up20,
-                                             simulation_context,episode_path,is_record=True,steps=40-random_steps)
+                                             simulation_context,episode_path,is_record=True,steps=20-random_steps)
     ###2 go to the target position
     complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions,
-                                             simulation_context,episode_path,is_record=True, steps=15)
-
-    # complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions,
-    #                                           simulation_context,episode_path,is_record=True, steps=60-random_steps)
-    
+                                             simulation_context,episode_path,is_record=True, steps=10)
+   
     start_force_control_gripper(robot)
     # select 16 steps to record
     selected_steps = np.linspace(0, 19, 10).astype(int)
@@ -108,12 +108,12 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
             recording(robot, cameras, episode_path, simulation_context,is_compression=True)
     ###4 go to the end joint position
     target_joint_positions_end = np.append(target_joint_positions_end, robot.get_joint_positions()[6])
-    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_end,
-                                             simulation_context,episode_path,is_record=True,steps=20+random_steps)
+    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_up20,
+                                             simulation_context,episode_path,is_record=True,steps=10+random_steps)
     
-    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],ending_joint_positions,
-                                             simulation_context,episode_path,is_record=False,steps=40)
-
+    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],target_joint_positions_end,
+                                             simulation_context,episode_path,is_record=True,steps=10)
+    
     with h5py.File(episode_path, "a") as f:
         if "label" not in f:
             # If dataset does not exist, create it with initial size (1,1) and allow resizing
@@ -132,17 +132,19 @@ def planning_grasp_path(robot,cameras,any_data_dict,AKSolver,simulation_context,
             label_dataset[0] = 1
             cprint("####Success!####","blue")
         else:
-            cprint("<<<<Faile!>>>>>>","red")
+            cprint("<<<<Faile!>>>>","red")
             
     print("Updated label dataset in", episode_path)
     
     # reset the gripper
     stop_force_control_gripper(robot)
     complete_joint_positions = control_gripper(robot,cameras,complete_joint_positions[6],0,
-                                               simulation_context,episode_path, is_record=False)
+                                               simulation_context,episode_path, is_record=True, steps=10)
+    
     # back to the initial position
-    complete_joint_positions = control_robot(robot,cameras,complete_joint_positions[:6],initial_joint_positions,
-                                             simulation_context, episode_path,is_record=False,steps=25)
+    initial_joint_positions = np.append(initial_joint_positions, robot.get_joint_positions()[6])
+    complete_joint_positions = control_both_robot_gripper(robot,cameras,complete_joint_positions[:7],initial_joint_positions,
+                                             simulation_context,episode_path,is_record=True,steps=20)
     for _ in range(10):
         simulation_context.step(render = True)
     
