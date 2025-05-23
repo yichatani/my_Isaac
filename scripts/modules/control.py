@@ -44,13 +44,13 @@ def finger_angle_to_width(finger_angle: float) -> float:
     return width
 
 def control_gripper(robot, cameras, finger_start, finger_target,
-                    simulation_context,episode_path, is_record=True)-> np.ndarray:
+                    simulation_context,episode_path, is_record=True, steps = 5)-> np.ndarray:
     """
         To control gripper open and close by angle
         By position control
         1 dimension: gripper
     """
-    finger_moves = interpolate_joint_positions(finger_start, finger_target, steps=30)
+    finger_moves = interpolate_joint_positions(finger_start, finger_target, steps)
     for position in finger_moves:
         action = ArticulationAction(joint_positions=np.array([position]), joint_indices=np.array([6]))
         robot.apply_action(action)
@@ -147,6 +147,7 @@ def control_robot_by_policy(robot, record_camera_dict:dict, actions:np.ndarray,s
     for action in actions:
         complete_joint_positions = robot.get_joint_positions()
         complete_joint_positions[:7] = action
+        complete_joint_positions[6] = complete_joint_positions[6] - 0.02
         robot.apply_action(ArticulationAction(joint_positions=complete_joint_positions))
         data_sample = observing(robot,record_camera_dict,simulation_context,data_sample,obs_steps=obs_steps)
         for _ in range(15):
@@ -165,7 +166,7 @@ def control_both_robot_gripper(robot, cameras, start_joint_position, target_join
         complete_joint_positions[:7] = joint_positions
         action = ArticulationAction(complete_joint_positions)
         robot.apply_action(action)
-        for _ in range(5):
+        for _ in range(10):
             simulation_context.step(render=True)
         if is_record:
             recording(robot, cameras,episode_path,simulation_context,is_compression=True)

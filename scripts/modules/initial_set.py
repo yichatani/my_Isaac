@@ -51,13 +51,20 @@ def reset_obj_pose(prim_paths,simulation_context):
         ]
         obj.set_world_pose(
             position=[
-                # random.uniform(0.33, 1.10), 
-                # random.uniform(-0.15,0.55), 
-                # random.uniform(0.8,0.85)
-                random.uniform(0.6,0.9),
-                random.uniform(-0.11,0.4),
+                random.uniform(0.65,0.85),
+                random.uniform(0.0,0.3),
                 random.uniform(0.90,1.00)             
             ],
+            # position=[
+            #     random.uniform(0.6,0.9),
+            #     random.uniform(-0.11,0.4),
+            #     random.uniform(0.90,1.00)             
+            # ],
+            # position=[
+            #     0.75,
+            #     0.15,
+            #     0.9             
+            # ],
             orientation = tuple(R.from_euler('xyz', euler_angles).as_quat())
         )
         for _ in range(20):
@@ -104,7 +111,7 @@ def find_robot(robot_path:str):
         print(f"Robot not found at: {robot_path}")
         exit(1)
 
-def initialize_robot(robot_path:str,initial_joint_positions:np.array,stage,simulation_context):
+def initialize_robot(robot_path:str):
     """Initialize the robot articulation."""
 
     robot = Articulation(prim_path=robot_path)
@@ -117,7 +124,9 @@ def initialize_robot(robot_path:str,initial_joint_positions:np.array,stage,simul
     robot.set_solver_position_iteration_count(64)
     robot.set_solver_velocity_iteration_count(64)
     print("Available DOF Names:", robot.dof_names)
+    return robot
 
+def set_initial_joint_positions(robot,initial_joint_positions:np.array,stage,simulation_context):
     complete_joint_positions = robot.get_joint_positions()
     setting_joint_positions = initial_joint_positions
     complete_joint_positions[:6] = setting_joint_positions
@@ -131,14 +140,18 @@ def initialize_robot(robot_path:str,initial_joint_positions:np.array,stage,simul
         set_joint_stiffness_damping(stage, find_joint_prim_path_by_name(dof), stiffness=10000.0, damping=1000.0)
     # for dof in robot.dof_names[10:12]: #skip 'left_outer_finger_joint', 'right_outer_finger_joint', 'left_inner_finger_pad_joint', 'right_inner_finger_pad_joint'
     #     set_joint_stiffness_damping(stage, find_joint_prim_path_by_name(dof), stiffness=10000.0, damping=1000.0)
-    return robot
 
-def reset_robot_pose(robot,simulation_context):
+def reset_robot_pose(robot,initial_joint_positions,simulation_context):
     complete_joint_positions = robot.get_joint_positions()
-    setting_joint_positions = np.array([0, -1.447, 0.749 + random.uniform(-0.087, 0.087), 
-                                        -0.873 + random.uniform(-0.087, 0.087), # give the last three joints a random rotation of -5 - 5 degrees
-                                        -1.571 + random.uniform(-0.087, 0.087), 
-                                        0 + random.uniform(-0.087,0.087)])
+    # setting_joint_positions = np.array([0, -1.447, 0.749 + random.uniform(-0.087, 0.087), 
+    #                                     -0.873 + random.uniform(-0.087, 0.087), 
+    #                                     -1.571 + random.uniform(-0.087, 0.087), 
+    #                                     0 + random.uniform(-0.087,0.087)])
+    setting_joint_positions = initial_joint_positions + np.array([0, 0, 
+                                                                  random.uniform(-0.087, 0.087),# give the last 4 joints a random rotation of -5 - 5 degrees
+                                                                  random.uniform(-0.087, 0.087),
+                                                                  random.uniform(-0.087, 0.087),
+                                                                  random.uniform(-0.087, 0.087)])
     complete_joint_positions[:6] = setting_joint_positions
     complete_joint_positions[6] = 0.
     robot.set_joint_positions(complete_joint_positions)

@@ -118,6 +118,61 @@ def recording(robot, cameras, episode_path, simulation_context, is_compression=F
         print(f"Recording frame {index} done.")
 
 
+def observing_m(robot, cameras ,simulation_context,data_sample=None,obs_steps=2):
+    assert robot is not None, "Failed to initialize Articulation"
+    data_dict = rgb_and_depth(cameras['front'], simulation_context)
+    data_dict["rgb"], data_dict["depth"] = resize_images(data_dict["rgb"], data_dict["depth"])
+    rgb = data_dict["rgb"].astype(np.uint8)
+    depth_raw = data_dict["depth"]
+    pc_raw = reconstruct_pointcloud(rgb, depth_raw)
+    # padding
+    if data_sample is None:
+        pc_list, state_list = [], []
+        if pc_raw.shape[0] > 32:
+            pc = preprocess_point_cloud(pc_raw, use_cuda=True)
+            for _ in range(obs_steps):
+                pc_list.append(pc)
+                # state_list.append(np.zeros(7))
+                # state_list.append(record_robot_7dofs(robot))
+                state_list.append(record_robot_end_effector_pose(robot))
+            pc_arr = np.stack(pc_list, axis=0).astype('float32')    
+            state_arr = np.stack(state_list, axis=0).astype('float32')
+
+            delta_arr = np.diff(state_arr, axis=0)
+            zero_pad = np.zeros_like(delta_arr[:1])
+            delta_arr = np.concatenate([zero_pad, delta_arr], axis=0)  # shape (T, 7)
+
+            data_sample = {'obs': 
+                {
+                    'agent_pos': state_arr.astype(np.float32),
+                    'point_cloud': pc_arr.astype(np.float32),
+                    'delta': delta_arr.astype(np.float32),
+                },
+                }
+            return data_sample
+        else:
+            print("Warning: Too few points in point cloud, skipping this frame.")
+            return None
+    else:
+        if pc_raw.shape[0] > 32:
+            pc = preprocess_point_cloud(pc_raw, use_cuda=True)
+            # state = record_robot_7dofs(robot)
+            state = record_robot_end_effector_pose(robot)
+            if state.ndim == 1:
+                state = state.reshape(1, -1)  # shape: (1, 7)
+            pc = pc.reshape(1, *pc.shape)
+            if data_sample['obs']['point_cloud'].shape[0] == obs_steps:
+                data_sample['obs']['point_cloud'] = np.concatenate((data_sample['obs']['point_cloud'][1:], pc), axis=0)
+                data_sample['obs']['agent_pos'] = np.concatenate((data_sample['obs']['agent_pos'], state), axis=0)
+                data_sample['obs']['delta'] = np.diff(data_sample['obs']['agent_pos'], axis=0)
+                data_sample['obs']['agent_pos'] = data_sample['obs']['agent_pos'][1:]
+            else:
+                raise ValueError("Invalid shape for data_sample NUM_PADDING_FRAMES")
+            return data_sample
+        else:
+            print("Warning: Too few points in point cloud, skipping this frame.")
+            return data_sample
+
 def observing(robot, cameras ,simulation_context,data_sample=None,obs_steps=2):
     assert robot is not None, "Failed to initialize Articulation"
     data_dict = rgb_and_depth(cameras['front'], simulation_context)
@@ -137,10 +192,16 @@ def observing(robot, cameras ,simulation_context,data_sample=None,obs_steps=2):
                 state_list.append(record_robot_end_effector_pose(robot))
             pc_arr = np.stack(pc_list, axis=0).astype('float32')    
             state_arr = np.stack(state_list, axis=0).astype('float32')
+
+            # delta_arr = np.diff(state_arr, axis=0)
+            # zero_pad = np.zeros_like(delta_arr[:1])
+            # delta_arr = np.concatenate([zero_pad, delta_arr], axis=0)  # shape (T, 7)
+
             data_sample = {'obs': 
                 {
                     'agent_pos': state_arr.astype(np.float32),
                     'point_cloud': pc_arr.astype(np.float32),
+                    # 'delta': delta_arr.astype(np.float32),
                 },
                 }
             return data_sample
@@ -157,14 +218,15 @@ def observing(robot, cameras ,simulation_context,data_sample=None,obs_steps=2):
             pc = pc.reshape(1, *pc.shape)
             if data_sample['obs']['point_cloud'].shape[0] == obs_steps:
                 data_sample['obs']['point_cloud'] = np.concatenate((data_sample['obs']['point_cloud'][1:], pc), axis=0)
-                data_sample['obs']['agent_pos'] = np.concatenate((data_sample['obs']['agent_pos'][1:], state), axis=0)
+                data_sample['obs']['agent_pos'] = np.concatenate((data_sample['obs']['agent_pos'], state), axis=0)
+                # data_sample['obs']['delta'] = np.diff(data_sample['obs']['agent_pos'], axis=0)
+                data_sample['obs']['agent_pos'] = data_sample['obs']['agent_pos'][1:]
             else:
                 raise ValueError("Invalid shape for data_sample NUM_PADDING_FRAMES")
             return data_sample
         else:
             print("Warning: Too few points in point cloud, skipping this frame.")
             return data_sample
-
    
 def record_robot_7dofs(robot):
     """

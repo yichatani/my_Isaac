@@ -199,7 +199,39 @@ class PointNetEncoderXYZ(nn.Module):
         self.input_pointcloud = input[0].detach()
 
     
+class CrossAttentionFusion(nn.Module):
+    def __init__(self, embed_dim=64, out_dim=128, num_heads=4):
+        super().__init__()
+        self.query_proj = nn.Linear(embed_dim, out_dim)
+        self.key_proj = nn.Linear(embed_dim, out_dim)
+        self.value_proj = nn.Linear(embed_dim, out_dim)
+        self.num_heads = num_heads
+        self.scale = (out_dim // num_heads) ** -0.5
+        self.out_proj = nn.Linear(out_dim, out_dim)
 
+    def forward(self, z_pc, z_state):
+        """
+        z_pc:    [B, D]  point cloud embedding (query)
+        z_state: [B, D]  trajectory / state embedding (key/value)
+        return:  [B, out_dim]  fused embedding
+        """
+        B, D = z_pc.shape
+
+        # reshape to 1 "token" for attention
+        query = self.query_proj(z_pc).view(B, 1, self.num_heads, -1)  # [B, 1, H, d]
+        key = self.key_proj(z_state).view(B, 1, self.num_heads, -1)   # [B, 1, H, d]
+        value = self.value_proj(z_state).view(B, 1, self.num_heads, -1)
+
+        # compute scaled dot-product attention
+        attn_score = (query * key).sum(-1) * self.scale  # [B, 1, H]
+        attn_weight = F.softmax(attn_score, dim=1)  # [B, 1, H]
+
+        # weighted sum
+        attn_output = attn_weight.unsqueeze(-1) * value  # [B, 1, H, d]
+        attn_output = attn_output.sum(1).reshape(B, -1)  # [B, H*d]
+        fused = self.out_proj(attn_output)  # [B, out_dim]
+
+        return fused
 
 
 class DP3Encoder(nn.Module):
@@ -215,7 +247,6 @@ class DP3Encoder(nn.Module):
         super().__init__()
         self.imagination_key = 'imagin_robot'
         self.state_key = 'agent_pos'
-        self.delta_key = 'delta'
         self.point_cloud_key = 'point_cloud'
         self.rgb_image_key = 'image'
         self.n_output_channels = out_channel
@@ -247,6 +278,7 @@ class DP3Encoder(nn.Module):
         else:
             raise NotImplementedError(f"pointnet_type: {pointnet_type}")
 
+
         if len(state_mlp_size) == 0:
             raise RuntimeError(f"State mlp size is empty")
         elif len(state_mlp_size) == 1:
@@ -255,10 +287,12 @@ class DP3Encoder(nn.Module):
             net_arch = state_mlp_size[:-1]
         output_dim = state_mlp_size[-1]
 
-        self.n_output_channels  += 2 * output_dim
+        self.n_output_channels  += output_dim
         self.state_mlp = nn.Sequential(*create_mlp(self.state_shape[0], output_dim, net_arch, state_mlp_activation_fn))
-        self.delta_mlp = nn.Sequential(*create_mlp(self.state_shape[0], output_dim, net_arch, state_mlp_activation_fn))
+
         cprint(f"[DP3Encoder] output dim: {self.n_output_channels}", "red")
+
+        # self.cross_fusion = CrossAttentionFusion(embed_dim=64, out_dim=128)
 
 
     def forward(self, observations: Dict) -> torch.Tensor:
@@ -274,11 +308,8 @@ class DP3Encoder(nn.Module):
             
         state = observations[self.state_key]
         state_feat = self.state_mlp(state)  # B * 64
-
-        delta = observations[self.delta_key]
-        delta_feat = self.delta_mlp(delta)  # B * 64
-
-        final_feat = torch.cat([pn_feat, state_feat, delta_feat], dim=-1)
+        final_feat = torch.cat([pn_feat, state_feat], dim=-1)
+        # final_feat = self.cross_fusion(pn_feat, state_feat)
         return final_feat
 
 

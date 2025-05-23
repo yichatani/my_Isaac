@@ -16,7 +16,7 @@ class IsaacZarrDataset(BaseDataset):
                  zarr_path,
                  n_obs_steps=None,
                  n_action_steps=None,
-                 horizon=None,
+                 horizon = None,
                  pad_before=None,
                  pad_after=None,
                  seed=42,
@@ -30,16 +30,10 @@ class IsaacZarrDataset(BaseDataset):
         self.n_action_steps = n_action_steps
         self.horizon = horizon
 
-        # padding ：pad_before = n_obs_steps - 1, pad_after = n_action_steps - 1
         self.pad_before = pad_before if pad_before is not None else n_obs_steps - 1
         self.pad_after = pad_after if pad_after is not None else n_action_steps - 1
 
         self.replay_buffer = ReplayBuffer.create_from_path(zarr_path)
-        # self.replay_buffer = ReplayBuffer.create_from_path(zarr_path, mode='a')
-        assert self.replay_buffer.n_episodes > 0, f"Replay buffer is empty. Please check the path: {zarr_path}"
-        agent_pos = self.replay_buffer['state']
-        episode_ends = self.replay_buffer.episode_ends
-        self.delta = self.compute_episode_deltas(agent_pos, episode_ends)
 
         val_mask = get_val_mask(self.replay_buffer.n_episodes, val_ratio=val_ratio, seed=seed)
         train_mask = downsample_mask(~val_mask, max_n=max_train_episodes, seed=seed)
@@ -59,11 +53,6 @@ class IsaacZarrDataset(BaseDataset):
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         sample = self.sampler.sample_sequence(idx)
         data = self._sample_to_data(sample)
-        if idx == 0:
-            print(f"[Dataset] agent_pos shape: {data['obs']['agent_pos'].shape}")
-            print(f"[Dataset] point_cloud shape: {data['obs']['point_cloud'].shape}")
-            print(f"[Dataset] delta shape: {data['obs']['delta'].shape}")
-            print(f"[Dataset] action shape: {data['action'].shape}")
         return dict_apply(data, torch.from_numpy)
 
     def _sample_to_data(self, sample):
@@ -71,7 +60,6 @@ class IsaacZarrDataset(BaseDataset):
             'obs': {
                 'agent_pos': sample['state'].astype(np.float32),
                 'point_cloud': sample['point_cloud'].astype(np.float32),
-                'delta': self.delta.astype(np.float32),
             },
             'action': sample['action'].astype(np.float32)
         }
@@ -91,23 +79,9 @@ class IsaacZarrDataset(BaseDataset):
     def get_normalizer(self, mode='limits', **kwargs):
         data = {
             'agent_pos': self.replay_buffer['state'],
-            'delta': self.delta,
-            'point_cloud': self.replay_buffer['point_cloud'],
             'action': self.replay_buffer['action'],
+            'point_cloud': self.replay_buffer['point_cloud'],
         }
         normalizer = LinearNormalizer()
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
         return normalizer
-    
-    def compute_episode_deltas(self, agent_pos: np.ndarray, episode_ends: np.ndarray):
-        starts = np.insert(episode_ends[:-1], 0, 0)
-        delta_list = []
-        for s, e in zip(starts, episode_ends):
-            ep = agent_pos[s:e]
-            if len(ep) < 2:
-                continue
-            delta = ep[1:] - ep[:-1]
-            delta_list.append(delta)
-        return np.concatenate(delta_list, axis=0)
-
-
