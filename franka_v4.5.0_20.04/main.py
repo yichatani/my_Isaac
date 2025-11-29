@@ -89,13 +89,16 @@ def save_camera_data(camera_key,data_dict, output_dir="./output_data"):
 
 def arm_const_speed(
     art, target_arm, sim,
-    step_size=0.05, eps=5e-3
+    step_size=0.1, eps=5e-3, is_target= True
 ):
     current = art.get_joint_positions().squeeze()
 
     # print(f"{target_arm.shape=}")
     # print(f"{current.shape=}")
     # print(f"{current[:7].shape=}")
+
+    if is_target is not True:
+        eps = 1e-2
 
     while True:
         diff = target_arm - current[:7]
@@ -119,10 +122,10 @@ def set_gripper(art, width, sim, steps=100):
     max width is 0.08
     """
     cmd = art.get_joint_positions().squeeze()
-    print(f"{cmd=}")
+    # print(f"{cmd=}")
     cmd[7] = width / 2
     cmd[8] = width / 2
-    print(f"{cmd=}")
+    # print(f"{cmd=}")
     action = ArticulationActions(joint_positions=cmd)
 
     for _ in range(steps):
@@ -155,29 +158,27 @@ def main():
     #                                    -1.71126407,  0.00911494, 1.93678644,  0.90436569, 0.04, 0.04]])
     initial_joint_position = np.array([-0.47200201, -0.53468038,  0.41885995, -2.64197119,  0.24759319,
         2.1317271,  0.54534657,  0.04,  0.04])
-    
-    # exit()
-    for i in range(50):
-        art.set_joint_positions(initial_joint_position)
-        simulation_context.step(render=True)
-
-    gripper_efforts = np.array([-10, -10])
-    art.set_joint_efforts(gripper_efforts, joint_indices=np.array([7, 8]))
-
-
-    # Camera
-    camera = initial_camera(camera_prim_path,60,(1920,1080))
-
-    # exit()    
-
     # IK
     ik = LulaKinematicsSolver(
         robot_description_path=robot_description_path,
         urdf_path=urdf_path,
     )
-    
-    print("IKSolver get_all_frame_names:",ik.get_all_frame_names())
-    print(f"{art._is_initialized=}")
+    # print("IKSolver get_all_frame_names:",ik.get_all_frame_names())
+    initial_tcp_position, initial_tcp_rotation = ik.compute_forward_kinematics("fr3_hand_tcp",
+                                                                           initial_joint_position[:7])
+    # print(f"{initial_tcp_position=}, {initial_tcp_rotation=}")
+    # exit()
+
+    # exit()
+    for i in range(50):
+        art.set_joint_positions(initial_joint_position)
+        simulation_context.step(render=True)
+
+    # Camera
+    camera = initial_camera(camera_prim_path,60,(1920,1080))
+    # exit()    
+
+    # print(f"{art._is_initialized=}")
     # AKSolver = ArticulationKinematicsSolver(art,ik,"fr3_hand_tcp")
     # print("<<< Set AKSolver successfully! >>>")
 
@@ -196,11 +197,13 @@ def main():
     target_quat = np.array([0.0, 1.0, 0.0, 0.0])
     # exit()
 
+    end_position = target_position + np.array([0,0,0.1])
+
     # Start simulation
     simulation_context.play()
 
     # Use to calculate initial point I want to go
-    # target_position = target_position + np.array([0,0,0.3])
+    # target_position = target_position + np.array([0,0,0.1])
     # print(f"{target_position=}")
     # print(f"{target_position.shape=}")
     # exit()
@@ -208,17 +211,76 @@ def main():
     # Compute Inverse Kinematics 
     target_joint_position = ik.compute_inverse_kinematics("fr3_hand_tcp",target_position, target_quat)[0]
     target_joint_position = np.append(target_joint_position, np.array([0.04, 0.04]))
-    print(f"{target_joint_position=}")
+    # print(f"{target_joint_position=}")
+    # exit()
 
+    waypoints_joint_position_1 = np.array([-0.4855259 , -0.32121756,  0.48082598, -2.76619067,  0.23539604,
+        2.46647489,  0.57443971,  0.04,  0.04])
+    waypoints_joint_position_2 = np.array([-0.7012182 ,  0.03962762,  0.64272673, -2.79521795, -0.07836149,
+        2.82603965,  0.80104943,  0.04,  0.04])
+    # print(f"{waypoints_joint_position_1=}")
+    # print(f"{waypoints_joint_position_2=}")
+
+# ##################################################
+#     num_steps = 25
+#     cartesian_positions = np.linspace(
+#         initial_tcp_position,
+#         # marker_position,
+#         target_position,
+#         num_steps
+#     )
+
+#     for pos in cartesian_positions:
+#         joint_pos = ik.compute_inverse_kinematics(
+#             "fr3_hand_tcp",
+#             pos.reshape(-1),
+#             target_quat
+#         )[0]
+
+#         # Append gripper joints
+#         joint_pos = np.append(joint_pos, np.array([0.04, 0.04]))
+
+#         arm_const_speed(art, joint_pos[:7], simulation_context)
+#         simulation_context.step(render=True)
+
+#     gripper_efforts = np.array([-10, -10])
+#     art.set_joint_efforts(gripper_efforts, joint_indices=np.array([7, 8]))
+#     set_gripper(art, width=0.0, sim=simulation_context,steps=50)
+
+#     num_steps = 10
+#     cartesian_positions = np.linspace(
+#         target_position,
+#         # marker_position,
+#         end_position,
+#         num_steps
+#     )
+
+#     for pos in cartesian_positions:
+#         joint_pos = ik.compute_inverse_kinematics(
+#             "fr3_hand_tcp",
+#             pos.reshape(-1),
+#             target_quat
+#         )[0]
+
+#         # Append gripper joints
+#         joint_pos = np.append(joint_pos, np.array([0.04, 0.04]))
+
+#         arm_const_speed(art, joint_pos[:7], simulation_context)
+#         simulation_context.step(render=True)
+
+# ##################################################
     # Take action
+    # arm_const_speed(art, waypoints_joint_position_1[:7], simulation_context)
+    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, is_target=False)
     arm_const_speed(art, target_joint_position[:7], simulation_context)
-    set_gripper(art, width=0.0, sim=simulation_context,steps=100)
+    set_gripper(art, width=0.0, sim=simulation_context,steps=50)
 
-    target_joint_position[:7] = initial_joint_position[:7]
-    arm_const_speed(art, target_joint_position[:7], simulation_context)
+    # target_joint_position[:7] = initial_joint_position[:7]
+    # arm_const_speed(art, target_joint_position[:7], simulation_context)
+    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context)
     
-    end_joint_position = art.get_joint_positions().squeeze()
-    print(f"{end_joint_position=}")
+    real_end_joint_position = art.get_joint_positions().squeeze()
+    print(f"{real_end_joint_position=}")
 
     simulation_context.stop()
     simulation_app.close()
