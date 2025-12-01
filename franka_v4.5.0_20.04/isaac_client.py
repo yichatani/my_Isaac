@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 class PolicyClient:
-    def __init__(self, addr="tcp://127.0.0.1:5555"):
+    def __init__(self, addr="tcp://127.0.0.1:5556"):
         ctx = zmq.Context.instance()
         self.socket = ctx.socket(zmq.REQ)
         self.socket.connect(addr)
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     # -------------------------
     # 1. 创建 policy client
     # -------------------------
-    policy = PolicyClient("tcp://127.0.0.1:5555")
+    policy = PolicyClient("tcp://127.0.0.1:5556")
 
     # -------------------------
     # 2. 假装仿真参数
