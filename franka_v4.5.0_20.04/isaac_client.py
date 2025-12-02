@@ -61,20 +61,65 @@ class PolicyClient:
 # =====================================================================
 # Camera
 # =====================================================================
-def init_camera(path):
-    cam = Camera(path, frequency=60, resolution=(1920, 1080))
-    cam.initialize()
-    return cam
+def initial_camera(camera_path, frequency, resolution):
+    """Initialize Camera"""
+    camera = Camera(
+        prim_path=camera_path,
+        frequency=frequency,
+        resolution=resolution,
+    )
+
+    camera.initialize()
+    camera.add_motion_vectors_to_frame()
+    camera.add_distance_to_image_plane_to_frame()
+    camera = set_camera_parameters(camera)
+
+    print("Camera Initialized!")
+
+    return camera
+
+def set_camera_parameters(camera):
+    
+    f_stop = 0
+    focus_distance = 0.4
+
+    horizontal_aperture = 20.955
+    vertical_aperture = 15.2908
+    focal_length = 18.14756
+
+    camera.set_focal_length(focal_length / 10.0)
+    camera.set_focus_distance(focus_distance)
+    camera.set_lens_aperture(f_stop * 100.0)
+    camera.set_horizontal_aperture(horizontal_aperture / 10.0)
+    camera.set_vertical_aperture(vertical_aperture / 10.0)
+    camera.set_clipping_range(0.1, 3.0)
+
+    return camera
 
 def get_rgb(cam):
     frame = cam.get_current_frame()
     if frame is None:
         return None
     rgba = frame.get("rgba", None)
-    if rgba is None or rgba.shape[0] == 0:
+    if not isinstance(rgba, np.ndarray):
+        return None
+    if rgba.ndim != 3 or rgba.shape[2] < 3:
+        return None
+    if rgba.shape[0] == 0 or rgba.shape[1] == 0:
         return None
     rgb = rgba[:, :, :3]
-    return cv2.resize(rgb, (TARGET_W, TARGET_H)).astype(np.uint8)
+    if rgb.dtype != np.uint8:
+        rgb = rgb.astype(np.uint8, copy=False)
+    try:
+        rgb = cv2.resize(
+            rgb,
+            (TARGET_W, TARGET_H),
+            interpolation=cv2.INTER_LINEAR
+        )
+    except cv2.error:
+        return None
+    return rgb
+
 
 # =====================================================================
 # Robot State
@@ -92,12 +137,16 @@ def get_tcp_pose(art, ik):
 def apply_delta_action(art, ik, delta):
     q = art.get_joint_positions().squeeze()
 
+    # -----------------------------
+    # arm: delta pose
+    # -----------------------------
     pos, rot = ik.compute_forward_kinematics("fr3_hand_tcp", q[:7])
     pos = np.array(pos)
     quat = rot_matrices_to_quats(np.array(rot).reshape(1, 3, 3))[0]
 
     dp = delta[:3]
     dquat = delta[3:7]
+    gripper_width = float(delta[7])   # ✅ absolute
 
     target_pos = pos + dp
     target_quat = quat + dquat
@@ -107,9 +156,18 @@ def apply_delta_action(art, ik, delta):
         "fr3_hand_tcp", target_pos, target_quat
     )[0]
 
+    # -----------------------------
+    # build full joint command
+    # -----------------------------
     cmd = q.copy()
     cmd[:7] = q_target
+
+    gripper_width = np.clip(gripper_width, 0.0, 0.08)  # safety
+    cmd[7] = gripper_width / 2.0
+    cmd[8] = gripper_width / 2.0
+
     art.apply_action(ArticulationActions(joint_positions=cmd))
+
 
 # =====================================================================
 # Main Loop
@@ -122,13 +180,18 @@ def main():
 
     art = Articulation("/fr3")
     art.initialize()
+    initial_joint_position = np.array([-0.47200201, -0.53468038, 0.41885995, -2.64197119, 0.24759319,
+                                       2.1317271, 0.54534657, 0.04, 0.04])
+    for i in range(50):
+        art.set_joint_positions(initial_joint_position)
+        sim.step(render=True)
 
     ik = LulaKinematicsSolver(
         urdf_path=urdf_path,
         robot_description_path=robot_description_path,
     )
 
-    camera = init_camera(camera_prim_path)
+    camera = initial_camera(camera_prim_path, 60, (1920, 1080))
 
     policy = PolicyClient(ZMQ_ADDR)
 
