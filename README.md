@@ -139,6 +139,11 @@ python main.py
 
 ## Logs
 
+**[2025/12/4]**
+
+**Progress:** Add franka_v4.5.0_20.04.
+
+
 **[2025/5/11]**
 
 **Progress:** Update depth compression. Collect data and train one policy which can work.
