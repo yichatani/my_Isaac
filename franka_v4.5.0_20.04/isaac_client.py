@@ -151,8 +151,19 @@ def main():
 
     art = Articulation("/fr3")
     art.initialize()
+    # # 真正的初始方向
     initial_joint_position = np.array([-0.47200201, -0.53468038, 0.41885995, -2.64197119, 0.24759319,
                                        2.1317271, 0.54534657, 0.04, 0.04])
+    # # x方向（向前）平移2cm
+    # initial_joint_position = np.array([-0.49183851, -0.46410037,  0.43962773, -2.58558015,  0.22938865,
+    #                                         2.14651702,  0.56456788,  0.04,  0.04])
+    # # x方向（向前）平移4cm
+    # initial_joint_position = np.array([-0.5121197 , -0.39750309,  0.46064247, -2.53006411,  0.208458  ,
+    #                                         2.16011791,  0.58498179,  0.04      ,  0.04      ])
+    # y方向（向右）平移2cm
+    # initial_joint_position = np.array([-0.45352914, -0.54309528,  0.45311303, -2.64096512,  0.26861368,
+    #                             2.12694205,  0.58240931,  0.04      ,  0.04      ])
+
     for i in range(50):
         art.set_joint_positions(initial_joint_position)
         sim.step(render=True)

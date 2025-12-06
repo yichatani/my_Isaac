@@ -8,17 +8,34 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 # utilities
 # ------------------------------------------------
 
-def load_episode_pose(episode_dir):
-    pose_path = os.path.join(episode_dir, "pose", "poses.npz")
+def load_episode_eef_pose(episode_dir):
+    pose_path = os.path.join(episode_dir, "ee_pose", "end_poses.npz")
     assert os.path.exists(pose_path), f"Missing {pose_path}"
 
+    print(f"{pose_path=}")
+    data = np.load(pose_path)
+    poses = data["poses"]   # (T, 8)
+    return poses
+
+def load_episode_obj2camera_pose(episode_dir):
+    pose_path = os.path.join(episode_dir, "marker_pose", "marker_poses.npz")
+    assert os.path.exists(pose_path), f"Missing {pose_path}"
+
+    print(f"{pose_path=}")
     data = np.load(pose_path)
     poses = data["poses"]   # (T, 8)
     return poses
 
 
+# def load_episode_pose(episode_dir):
+#     pose_file = os.path.join(episode_dir, "pose","poses.npz")
+#     data = np.load(pose_file, allow_pickle=True)
+#     print("Keys in npz:", data.files)
+#     return data
+
 def load_episode_images(episode_dir, resize=(96, 96)):
-    rgb_dir = os.path.join(episode_dir, "rgb_masked")
+    # rgb_dir = os.path.join(episode_dir, "rgb_masked")
+    rgb_dir = os.path.join(episode_dir, "rgb")
     assert os.path.exists(rgb_dir), f"Missing {rgb_dir}"
 
     files = sorted([f for f in os.listdir(rgb_dir) if f.endswith(".png")])
@@ -43,23 +60,26 @@ def process_episode(episode_dir):
         actions (T-1, 8)
         images  (T-1, 3, H, W)
     """
-    poses = load_episode_pose(episode_dir)
+    eef_poses = load_episode_eef_pose(episode_dir)
+    marker_poses = load_episode_obj2camera_pose(episode_dir)
+    # exit()
     images = load_episode_images(episode_dir)
 
-    T = poses.shape[0]
+    T = eef_poses.shape[0]
     assert images.shape[0] == T, "Pose/Image length mismatch"
 
     # ---- states ----
-    states = poses[:-1]
+    # states = eef_poses[:-1]
+    states = marker_poses[:-1]
 
     # ---- actions ----
-    actions = np.zeros_like(states)
+    actions = np.zeros_like(eef_poses[:-1])
 
     # 前 7 维：差分
-    actions[:, :7] = poses[1:, :7] - poses[:-1, :7]
+    actions[:, :7] = eef_poses[1:, :7] - eef_poses[:-1, :7]
 
     # 最后一维：夹爪宽度（绝对值）
-    actions[:, 7] = poses[1:, 7]
+    actions[:, 7] = eef_poses[1:, 7]
 
     # ---- images ----
     images = images[:-1]
@@ -73,12 +93,14 @@ def process_episode(episode_dir):
 
 def convert_episodes_to_npz(episodes_root, save_dir):
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, "train.npz")
+    save_path = os.path.join(save_dir, "raw.npz")
 
     episode_names = sorted([
         d for d in os.listdir(episodes_root)
         if d.startswith("episode_")
     ])
+
+    print(f"{episode_names=}")
 
     all_states, all_actions, all_images, traj_lengths = [], [], [], []
 
@@ -86,6 +108,7 @@ def convert_episodes_to_npz(episodes_root, save_dir):
         ep_dir = os.path.join(episodes_root, ep_name)
         print(f"Processing {ep_name}")
 
+        print(f"{ep_dir=}")
         states, actions, images = process_episode(ep_dir)
 
         all_states.append(states)
@@ -118,10 +141,11 @@ def convert_episodes_to_npz(episodes_root, save_dir):
 # ------------------------------------------------
 
 if __name__ == "__main__":
-    episodes_root = os.path.join(
-        "/home/ani/Downloads/isaac_sim_data",
-        "episodes_subsampled"
-    )
+    # episodes_root = os.path.join(
+    #     "/home/ani/Downloads/isaac_sim_data",
+    #     "episodes_subsampled"
+    # )
+    episodes_root = "/home/ani/isaacsim/my_collections/episodes_subsampled"
 
-    save_dir = os.path.join("/home/ani/Downloads/isaac_sim_data", "data", "isaac_rgb_masked")
+    save_dir = os.path.join(episodes_root, "data_no_seg")
     convert_episodes_to_npz(episodes_root, save_dir)

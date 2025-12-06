@@ -202,17 +202,19 @@ def main():
     # Start simulation
     simulation_context.play()
 
-    # Use to calculate initial point I want to go
-    # target_position = target_position + np.array([0,0,0.1])
+    # ######## Should be commented when normally run
+    # # Use to calculate initial point I want to go
+    # target_position = target_position + np.array([0,0,0.3]) + np.array([0.0, 0.02, 0.0])
     # print(f"{target_position=}")
     # print(f"{target_position.shape=}")
-    # exit()
+    # # exit()
+    # ########
 
     # Compute Inverse Kinematics 
     target_joint_position = ik.compute_inverse_kinematics("fr3_hand_tcp",target_position, target_quat)[0]
     target_joint_position = np.append(target_joint_position, np.array([0.04, 0.04]))
-    # print(f"{target_joint_position=}")
-    # exit()
+    print(f"{target_joint_position=}")
+    exit()
 
     waypoints_joint_position_1 = np.array([-0.4855259 , -0.32121756,  0.48082598, -2.76619067,  0.23539604,
         2.46647489,  0.57443971,  0.04,  0.04])
