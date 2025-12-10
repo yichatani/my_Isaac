@@ -9,20 +9,24 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 # ------------------------------------------------
 
 def load_episode_eef_pose(episode_dir):
-    pose_path = os.path.join(episode_dir, "ee_pose", "end_poses.npz")
+    pose_path = os.path.join(episode_dir, "ee_pose", "ee_poses.npz")
     assert os.path.exists(pose_path), f"Missing {pose_path}"
 
     print(f"{pose_path=}")
     data = np.load(pose_path)
-    poses = data["poses"]   # (T, 8)
+    # print(f"{data=}")
+    # exit()
+    poses = data["ee_pose"]   # (T, 8)
     return poses
 
 def load_episode_obj2camera_pose(episode_dir):
-    pose_path = os.path.join(episode_dir, "marker_pose", "marker_poses.npz")
+    pose_path = os.path.join(episode_dir, "obj_pose", "obj_poses.npz")
     assert os.path.exists(pose_path), f"Missing {pose_path}"
 
     print(f"{pose_path=}")
     data = np.load(pose_path)
+    # print(f"{data=}")
+    # exit()
     poses = data["poses"]   # (T, 8)
     return poses
 
@@ -35,7 +39,7 @@ def load_episode_obj2camera_pose(episode_dir):
 
 def load_episode_images(episode_dir, resize=(96, 96)):
     # rgb_dir = os.path.join(episode_dir, "rgb_masked")
-    rgb_dir = os.path.join(episode_dir, "rgb")
+    rgb_dir = os.path.join(episode_dir, "rgb_masked")
     assert os.path.exists(rgb_dir), f"Missing {rgb_dir}"
 
     files = sorted([f for f in os.listdir(rgb_dir) if f.endswith(".png")])
@@ -145,7 +149,8 @@ if __name__ == "__main__":
     #     "/home/ani/Downloads/isaac_sim_data",
     #     "episodes_subsampled"
     # )
-    episodes_root = "/home/ani/isaacsim/my_collections/episodes_subsampled"
+    # episodes_root = "/home/ani/isaacsim/my_collections/episodes_subsampled"
+    episodes_root = "/portal/test_data/episodes_subsampled_1210_B_mode"
 
-    save_dir = os.path.join(episodes_root, "data_no_seg")
+    save_dir = os.path.join(episodes_root, "data_seg")
     convert_episodes_to_npz(episodes_root, save_dir)

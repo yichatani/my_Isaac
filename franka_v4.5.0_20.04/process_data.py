@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 import shutil
 
+PORTAL_DIR = "/portal/test_data"
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def reconstruct_pointcloud(episode_dir, frame_idx=0, visualize=False):
@@ -191,8 +192,12 @@ def subsample_episode(src_episode_dir, dst_root_dir, step=2):
 if __name__ == '__main__':
 
     # Example 1: Subsample episode
-    src_episode_dir = os.path.join(ROOT_DIR, "episodes", "episode_0001")
-    dst_root_dir = os.path.join(ROOT_DIR, "episodes_subsampled")
+    # src_episode_dir = os.path.join(ROOT_DIR, "episodes", "episode_0001")
+    # dst_root_dir = os.path.join(ROOT_DIR, "episodes_subsampled")
+
+    src_episode_dir = os.path.join(PORTAL_DIR, "episodes", "episode_0000")
+    dst_root_dir = os.path.join(PORTAL_DIR, "episodes_subsampled")
+
     subsample_episode(src_episode_dir, dst_root_dir, step=6)
     print("Done subsampling.")
 

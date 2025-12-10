@@ -418,6 +418,10 @@ def queue_frame_for_recording(art, ik, camera):
         
         # Get camera data
         data_dict = rgb_and_depth(camera)
+        # Check if data is valid
+        if data_dict is None:
+            print("Warning: Camera data is None, skipping frame")
+            return
         rgb_resized, depth_resized = resize_images(data_dict["rgb"], data_dict["depth"])
         
         # Prepare data packet
