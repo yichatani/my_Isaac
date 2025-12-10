@@ -214,7 +214,7 @@ def main():
     target_joint_position = ik.compute_inverse_kinematics("fr3_hand_tcp",target_position, target_quat)[0]
     target_joint_position = np.append(target_joint_position, np.array([0.04, 0.04]))
     print(f"{target_joint_position=}")
-    exit()
+    # exit()
 
     waypoints_joint_position_1 = np.array([-0.4855259 , -0.32121756,  0.48082598, -2.76619067,  0.23539604,
         2.46647489,  0.57443971,  0.04,  0.04])

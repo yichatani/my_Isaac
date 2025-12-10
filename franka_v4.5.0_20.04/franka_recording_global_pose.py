@@ -48,6 +48,11 @@ TARGET_WIDTH = 448
 recording_queue = queue.Queue()
 recording_active = threading.Event()
 
+# Global variables to store initial states
+initial_T_world_camera = None
+initial_T_camera_marker = None
+
+
 def initial_camera(camera_path, frequency, resolution):
     """Initialize Camera"""
     camera = Camera(
@@ -117,6 +122,35 @@ def resize_images(rgb, depth):
     return rgb_resized, depth_resized
 
 
+def pose_to_transform_matrix(position, quaternion):
+    """
+    Convert position and quaternion to 4x4 transformation matrix
+    Args:
+        position: [x, y, z]
+        quaternion: [qw, qx, qy, qz]
+    Returns:
+        4x4 transformation matrix
+    """
+    T = np.eye(4)
+    T[:3, :3] = quats_to_rot_matrices(quaternion)
+    T[:3, 3] = position
+    return T
+
+
+def transform_matrix_to_pose(T):
+    """
+    Convert 4x4 transformation matrix to position and quaternion
+    Args:
+        T: 4x4 transformation matrix
+    Returns:
+        position: [x, y, z]
+        quaternion: [qw, qx, qy, qz]
+    """
+    position = T[:3, 3]
+    quaternion = rot_matrices_to_quats(T[:3, :3])
+    return position, quaternion
+
+
 def get_franka_end_effector_pose(art, ik):
     """
     Get Franka end effector pose (position + quaternion) + gripper width
@@ -154,6 +188,95 @@ def get_franka_end_effector_pose(art, ik):
     assert end_effector_pose.shape == (8,), f"Expected shape (8,), got {end_effector_pose.shape}"
     
     return end_effector_pose
+
+
+def initialize_marker_tracking(camera, marker):
+    """
+    Initialize marker tracking by storing the initial transformation matrices
+    
+    Returns:
+        T_world_camera_initial: Initial camera pose in world frame (4x4)
+        T_camera_marker_initial: Initial marker pose in camera frame (4x4)
+    """
+    camera_world_pos, camera_world_quat = camera.get_world_pose()
+    marker_world_pos, marker_world_quat = marker.get_world_pose()
+    
+    # T_world_camera (initial)
+    T_world_camera = pose_to_transform_matrix(camera_world_pos, camera_world_quat)
+    
+    # T_world_marker (initial)
+    T_world_marker = pose_to_transform_matrix(marker_world_pos, marker_world_quat)
+    
+    # T_camera_marker = T_world_camera^-1 @ T_world_marker
+    T_camera_marker = np.linalg.inv(T_world_camera) @ T_world_marker
+    
+    # Apply camera coordinate transform
+    T_tcamera = np.array([
+        [0.0,  -1.0,  0.0, 0.0],
+        [0.0, 0.0,  -1.0, 0.0],
+        [1.0,  0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+    ])
+    T_camera_marker = T_tcamera @ T_camera_marker
+    
+    print(f"Initial marker tracking initialized")
+    print(f"Initial T_world_camera:\n{T_world_camera}")
+    print(f"Initial T_camera_marker:\n{T_camera_marker}")
+    
+    return T_world_camera, T_camera_marker
+
+
+def compute_marker_pose_from_camera_motion(camera, initial_T_world_camera, initial_T_camera_marker):
+    """
+    Compute marker pose in current camera frame, assuming marker stays at its initial world position
+    
+    The key idea:
+    - Marker's world position is fixed (even if physically it's moved, we track as if it stayed)
+    - Camera moves with the robot
+    - We compute: T_camera_current_marker = T_world_camera_current^-1 @ T_world_marker_initial
+    
+    Args:
+        camera: Camera object (to get current pose)
+        initial_T_world_camera: Initial camera pose in world frame (4x4)
+        initial_T_camera_marker: Initial marker pose in initial camera frame (4x4)
+    
+    Returns:
+        marker_in_camera_pos: [x, y, z]
+        marker_in_camera_quat: [qw, qx, qy, qz]
+    """
+    # Get current camera pose in world frame
+    camera_world_pos, camera_world_quat = camera.get_world_pose()
+    T_world_camera_current = pose_to_transform_matrix(camera_world_pos, camera_world_quat)
+    
+    # Reconstruct initial marker pose in world frame
+    # T_world_marker_initial = T_world_camera_initial @ T_camera_marker_initial
+    # But we need to reverse the camera coordinate transform first
+    T_tcamera = np.array([
+        [0.0,  -1.0,  0.0, 0.0],
+        [0.0, 0.0,  -1.0, 0.0],
+        [1.0,  0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+    ])
+    T_tcamera_inv = np.linalg.inv(T_tcamera)
+    
+    # Remove camera coordinate transform to get standard camera frame
+    T_camera_marker_standard = T_tcamera_inv @ initial_T_camera_marker
+    
+    # Get marker in world frame (initial position)
+    T_world_marker_initial = initial_T_world_camera @ T_camera_marker_standard
+    
+    # Compute marker in current camera frame
+    # T_camera_current_marker = T_world_camera_current^-1 @ T_world_marker_initial
+    T_camera_current_marker = np.linalg.inv(T_world_camera_current) @ T_world_marker_initial
+    
+    # Apply camera coordinate transform to current result
+    T_camera_current_marker = T_tcamera @ T_camera_current_marker
+    
+    # Extract position and quaternion
+    marker_in_camera_pos, marker_in_camera_quat = transform_matrix_to_pose(T_camera_current_marker)
+    
+    return marker_in_camera_pos, marker_in_camera_quat
+
 
 def recording_thread_worker(episode_dir):
     """
@@ -273,22 +396,26 @@ def create_episode_directory():
     return episode_dir
 
 
-def queue_frame_for_recording(art, ik, camera, marker, simulation_context):
+def queue_frame_for_recording(art, ik, camera):
     """
     Capture current frame and add to recording queue
     """
+    global initial_T_world_camera, initial_T_camera_marker
+    
     try:
         # Get end effector pose
         ee_pose = get_franka_end_effector_pose(art, ik)
         
-        # Get marker in camera pose
-        marker_in_camera_pos, marker_in_camera_quat = get_marker_in_camera_pose(camera, marker)
+        # Compute marker pose in current camera frame (relative to initial position)
+        if initial_T_world_camera is None or initial_T_camera_marker is None:
+            raise ValueError("Initial marker tracking not initialized!")
         
-        # Check if data is valid
-        if data_dict is None:
-            print("Warning: Camera data is None, skipping frame")
-            return
-
+        marker_in_camera_pos, marker_in_camera_quat = compute_marker_pose_from_camera_motion(
+            camera, 
+            initial_T_world_camera, 
+            initial_T_camera_marker
+        )
+        
         # Get camera data
         data_dict = rgb_and_depth(camera)
         rgb_resized, depth_resized = resize_images(data_dict["rgb"], data_dict["depth"])
@@ -308,9 +435,11 @@ def queue_frame_for_recording(art, ik, camera, marker, simulation_context):
         
     except Exception as e:
         print(f"Error queuing frame: {e}")
+        import traceback
+        traceback.print_exc()
 
 
-def arm_const_speed(art, target_arm, sim, ik, camera, marker, record=False, step_size=0.1, eps=5e-3, is_target=True):
+def arm_const_speed(art, target_arm, sim, ik, camera, record=False, step_size=0.1, eps=5e-3, is_target=True):
     """
     Move arm to target with constant speed, optionally recording
     """
@@ -334,12 +463,12 @@ def arm_const_speed(art, target_arm, sim, ik, camera, marker, record=False, step
         
         # Record frame if requested
         if record:
-            queue_frame_for_recording(art, ik, camera, marker, sim)
+            queue_frame_for_recording(art, ik, camera)
 
         current = art.get_joint_positions().squeeze()
 
 
-def set_gripper(art, width, sim, ik, camera, marker, record=False, steps=50):
+def set_gripper(art, width, sim, ik, camera, record=False, steps=50):
     """
     Smoothly set gripper width over multiple steps
     """
@@ -360,12 +489,10 @@ def set_gripper(art, width, sim, ik, camera, marker, record=False, steps=50):
         sim.step(render=True)
 
         if record:
-            queue_frame_for_recording(art, ik, camera, marker, sim)
+            queue_frame_for_recording(art, ik, camera)
 
 
-
-
-def hold_position(art, sim, ik, camera, marker, record=False, duration=2.0):
+def hold_position(art, sim, ik, camera, record=False, duration=2.0):
     """
     Hold current position for specified duration
     """
@@ -381,52 +508,16 @@ def hold_position(art, sim, ik, camera, marker, record=False, duration=2.0):
         
         # Record at ~10 Hz during hold
         if record and frame_count % 6 == 0:
-            queue_frame_for_recording(art, ik, camera, marker, sim)
+            queue_frame_for_recording(art, ik, camera)
         
         frame_count += 1
     
     print(f"Held position for {duration} seconds")
 
 
-def get_marker_in_camera_pose(camera, marker):
-    """
-    Calculate marker pose in camera coordinate system
-    Returns: position (3,) and quaternion (4,) - [x, y, z], [qw, qx, qy, qz]
-    """
-    camera_world_pos, camera_world_quat = camera.get_world_pose()
-    marker_world_pos, marker_world_quat = marker.get_world_pose()
-    
-    # T_world_camera
-    R_world_camera = quats_to_rot_matrices(camera_world_quat)
-    T_world_camera = np.eye(4)
-    T_world_camera[:3, :3] = R_world_camera
-    T_world_camera[:3, 3] = camera_world_pos
-    
-    # T_world_marker
-    R_world_marker = quats_to_rot_matrices(marker_world_quat)
-    T_world_marker = np.eye(4)
-    T_world_marker[:3, :3] = R_world_marker
-    T_world_marker[:3, 3] = marker_world_pos
-    
-    # T_camera_marker
-    T_camera_marker = np.linalg.inv(T_world_camera) @ T_world_marker
-    
-    # Apply camera coordinate transform
-    T_tcamera = np.array([
-        [0.0,  -1.0,  0.0, 0.0],
-        [0.0, 0.0,  -1.0, 0.0],
-        [1.0,  0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0]
-    ])
-    T_camera_marker = T_tcamera @ T_camera_marker
-    
-    marker_in_camera_quat = rot_matrices_to_quats(T_camera_marker[:3, :3])
-    marker_in_camera_pos = T_camera_marker[:3, 3]
-    
-    return marker_in_camera_pos, marker_in_camera_quat
-
-
 def main():
+    global initial_T_world_camera, initial_T_camera_marker
+    
     # Stage
     print("Opening stage...")
     open_stage(usd_path=asset_path)
@@ -460,25 +551,25 @@ def main():
     # Camera
     camera = initial_camera(camera_prim_path, 60, (1920, 1080))
 
-    # camera_world_pos, camera_world_quat = camera.get_world_pose()
-    # print(f"{camera_world_pos=}, {camera_world_quat=}")
-    # exit()
-    # Object
+    # Object (Marker)
     marker = XFormPrim(marker_prim_path)
     marker_world_pos, marker_world_quat = marker.get_world_pose()
     print(f"{marker_world_pos=}, {marker_world_quat=}")
-    # exit()
 
-    marker_in_camera_pos, marker_in_camera_quat = get_marker_in_camera_pose(camera, marker)
-    print(f"{marker_in_camera_pos=}, {marker_in_camera_quat=}")
-    # exit()
-
-    marker_position = marker_world_pos
-    marker_quat = marker_world_quat
-    # print(f"Marker position: {marker_position}")
-    # print(f"Marker quat: {marker_quat}")
+    # Initialize marker tracking - capture the first frame relationship
+    print("\n" + "="*60)
+    print("Initializing marker tracking...")
+    print("="*60)
+    initial_T_world_camera, initial_T_camera_marker = initialize_marker_tracking(camera, marker)
+    
+    marker_in_camera_pos, marker_in_camera_quat = transform_matrix_to_pose(initial_T_camera_marker)
+    print(f"Initial marker in camera: pos={marker_in_camera_pos}, quat={marker_in_camera_quat}")
+    print("="*60 + "\n")
 
     # Target
+    marker_position = marker_world_pos
+    marker_quat = marker_world_quat
+    
     target_position = marker_position - art_world_pose[0]
     target_position = target_position.reshape(-1)
     target_quat = np.array([0.0, 1.0, 0.0, 0.0])
@@ -511,19 +602,19 @@ def main():
     
     print("Phase 1: Moving to initial position...")
     print("Phase 2: Moving to pre-grasp position...")
-    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera, marker,
+    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera,
                    record=True, is_target=False)
 
     print("Phase 3: Moving to grasp target...")
-    arm_const_speed(art, target_joint_position[:7], simulation_context, ik, camera, marker, record=True)
+    arm_const_speed(art, target_joint_position[:7], simulation_context, ik, camera, record=True)
     
     print("Phase 4: Closing gripper...")
-    set_gripper(art, width=0.0, sim=simulation_context, ik=ik, camera=camera, marker=marker,
+    set_gripper(art, width=0.0, sim=simulation_context, ik=ik, camera=camera,
                 record=True, steps=50)
     
     print("Phase 5: Returning with object...")
-    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera, marker, record=True)
-    hold_position(art, simulation_context, ik, camera, marker, record=True, duration=10.0)
+    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera, record=True)
+    hold_position(art, simulation_context, ik, camera, record=True, duration=10.0)
     
     print("\n" + "="*60)
     print("Grasp demonstration completed!")
