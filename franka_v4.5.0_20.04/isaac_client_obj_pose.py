@@ -1,0 +1,378 @@
+import os
+import time
+import zmq
+import cv2
+import numpy as np
+from collections import deque
+from isaacsim import SimulationApp
+
+# =====================================================================
+# Simulation App
+# =====================================================================
+simulation_app = SimulationApp({
+    "headless": False,
+    "renderer": "Storm"
+})
+
+import carb.settings
+settings = carb.settings.get_settings()
+settings.set_bool("/rtx/enabled", False)
+settings.set_bool("/rtx/reflections/enabled", False)
+settings.set_bool("/rtx/translucency/enabled", False)
+settings.set_bool("/rtx/postProcessing/enabled", False)
+settings.set_bool("/rtx/dlss/enabled", False)
+settings.set_bool("/rtx/caustics/enabled", False)
+settings.set_bool("/rtx/ambientOcclusion/enabled", False)
+
+from isaacsim.core.api import SimulationContext
+from isaacsim.core.prims import Articulation
+from omni.isaac.core.prims import XFormPrim
+from omni.isaac.sensor import Camera
+from isaacsim.core.utils.types import ArticulationActions
+from omni.isaac.motion_generation import LulaKinematicsSolver
+from omni.isaac.core.utils.stage import open_stage
+from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, quats_to_rot_matrices
+
+# =====================================================================
+# Config
+# =====================================================================
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+asset_path = ROOT_DIR + "/franka_manipulation.usd"
+
+# SEG_ADDR = "tcp://192.168.56.55:5556"     # seg server
+SEG_ADDR = "tcp://192.168.56.56:5555"
+ACTION_BIND = "tcp://192.168.56.56:5557"  # policy → isaac
+
+TARGET_H, TARGET_W = 448, 448
+OBS_STEPS = 2
+IMG_STEPS = 2
+
+# Marker prim path
+marker_prim_path = "/_40_large_marker"
+
+# Global variables to store initial states
+initial_T_world_camera = None
+initial_T_camera_marker = None
+
+# =====================================================================
+# ZMQ Setup (DUAL SOCKET)
+# =====================================================================
+ctx = zmq.Context.instance()
+
+# → SEG (send obs)
+seg_sock = ctx.socket(zmq.REQ)
+seg_sock.connect(SEG_ADDR)
+print(f"[Isaac] Connected to SegServer {SEG_ADDR}")
+
+# ← POLICY (receive action)
+action_sock = ctx.socket(zmq.REP)
+action_sock.bind(ACTION_BIND)
+print(f"[Isaac] Waiting for Policy on {ACTION_BIND}")
+
+# =====================================================================
+# Camera utilities
+# =====================================================================
+def initial_camera(camera_path, frequency, resolution):
+    """Initialize Camera"""
+    camera = Camera(
+        prim_path=camera_path,
+        frequency=frequency,
+        resolution=resolution,
+    )
+
+    camera.initialize()
+    camera.add_motion_vectors_to_frame()
+    camera.add_distance_to_image_plane_to_frame()
+    camera = set_camera_parameters(camera)
+
+    print("Camera Initialized!")
+
+    return camera
+
+
+def set_camera_parameters(camera):
+    
+    f_stop = 0
+    focus_distance = 0.4
+
+    horizontal_aperture = 20.955
+    vertical_aperture = 15.2908
+    focal_length = 18.14756
+
+    camera.set_focal_length(focal_length / 10.0)
+    camera.set_focus_distance(focus_distance)
+    camera.set_lens_aperture(f_stop * 100.0)
+    camera.set_horizontal_aperture(horizontal_aperture / 10.0)
+    camera.set_vertical_aperture(vertical_aperture / 10.0)
+    camera.set_clipping_range(0.1, 3.0)
+
+    return camera
+
+def get_rgb(cam):
+    frame = cam.get_current_frame()
+    if frame is None:
+        return None
+    rgba = frame.get("rgba", None)
+    if rgba is None:
+        return None
+    rgb = rgba[:, :, :3].astype(np.uint8)
+    return cv2.resize(rgb, (TARGET_W, TARGET_H))
+
+# =====================================================================
+# Marker tracking utilities
+# =====================================================================
+def pose_to_transform_matrix(position, quaternion):
+    """
+    Convert position and quaternion to 4x4 transformation matrix
+    Args:
+        position: [x, y, z]
+        quaternion: [qw, qx, qy, qz]
+    Returns:
+        4x4 transformation matrix
+    """
+    T = np.eye(4)
+    T[:3, :3] = quats_to_rot_matrices(quaternion)
+    T[:3, 3] = position
+    return T
+
+
+def transform_matrix_to_pose(T):
+    """
+    Convert 4x4 transformation matrix to position and quaternion
+    Args:
+        T: 4x4 transformation matrix
+    Returns:
+        position: [x, y, z]
+        quaternion: [qw, qx, qy, qz]
+    """
+    position = T[:3, 3]
+    quaternion = rot_matrices_to_quats(T[:3, :3])
+    return position, quaternion
+
+
+def initialize_marker_tracking(camera, marker):
+    """
+    Initialize marker tracking by storing the initial transformation matrices
+    
+    Returns:
+        T_world_camera_initial: Initial camera pose in world frame (4x4)
+        T_camera_marker_initial: Initial marker pose in camera frame (4x4)
+    """
+    camera_world_pos, camera_world_quat = camera.get_world_pose()
+    marker_world_pos, marker_world_quat = marker.get_world_pose()
+    
+    # T_world_camera (initial)
+    T_world_camera = pose_to_transform_matrix(camera_world_pos, camera_world_quat)
+    
+    # T_world_marker (initial)
+    T_world_marker = pose_to_transform_matrix(marker_world_pos, marker_world_quat)
+    
+    # T_camera_marker = T_world_camera^-1 @ T_world_marker
+    T_camera_marker = np.linalg.inv(T_world_camera) @ T_world_marker
+    
+    # Apply camera coordinate transform
+    T_tcamera = np.array([
+        [0.0,  -1.0,  0.0, 0.0],
+        [0.0, 0.0,  -1.0, 0.0],
+        [1.0,  0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+    ])
+    T_camera_marker = T_tcamera @ T_camera_marker
+    
+    print(f"Initial marker tracking initialized")
+    print(f"Initial T_world_camera:\n{T_world_camera}")
+    print(f"Initial T_camera_marker:\n{T_camera_marker}")
+    
+    return T_world_camera, T_camera_marker
+
+
+def compute_marker_pose_from_camera_motion(camera, initial_T_world_camera, initial_T_camera_marker):
+    """
+    Compute marker pose in current camera frame, assuming marker stays at its initial world position
+    
+    Args:
+        camera: Camera object (to get current pose)
+        initial_T_world_camera: Initial camera pose in world frame (4x4)
+        initial_T_camera_marker: Initial marker pose in initial camera frame (4x4)
+    
+    Returns:
+        marker_pose_7d: [x, y, z, qw, qx, qy, qz] np.ndarray
+    """
+    # Get current camera pose in world frame
+    camera_world_pos, camera_world_quat = camera.get_world_pose()
+    T_world_camera_current = pose_to_transform_matrix(camera_world_pos, camera_world_quat)
+    
+    # Reconstruct initial marker pose in world frame
+    T_tcamera = np.array([
+        [0.0,  -1.0,  0.0, 0.0],
+        [0.0, 0.0,  -1.0, 0.0],
+        [1.0,  0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+    ])
+    T_tcamera_inv = np.linalg.inv(T_tcamera)
+    
+    # Remove camera coordinate transform to get standard camera frame
+    T_camera_marker_standard = T_tcamera_inv @ initial_T_camera_marker
+    
+    # Get marker in world frame (initial position)
+    T_world_marker_initial = initial_T_world_camera @ T_camera_marker_standard
+    
+    # Compute marker in current camera frame
+    T_camera_current_marker = np.linalg.inv(T_world_camera_current) @ T_world_marker_initial
+    
+    # Apply camera coordinate transform to current result
+    T_camera_current_marker = T_tcamera @ T_camera_current_marker
+    
+    # Extract position and quaternion
+    marker_in_camera_pos, marker_in_camera_quat = transform_matrix_to_pose(T_camera_current_marker)
+    
+    # Concatenate to 7D pose
+    marker_pose_7d = np.concatenate([marker_in_camera_pos, marker_in_camera_quat]).astype(np.float32)
+    
+    return marker_pose_7d
+
+# =====================================================================
+# Robot helpers
+# =====================================================================
+def get_tcp_pose(art, ik):
+    q = art.get_joint_positions().squeeze()
+    pos, rot = ik.compute_forward_kinematics("fr3_hand_tcp", q[:7])
+    quat = rot_matrices_to_quats(np.array(rot).reshape(1, 3, 3))[0]
+    width = q[7] + q[8]
+    return np.concatenate([pos, quat, [width]]).astype(np.float32)
+
+def apply_delta_action(art, ik, delta):
+    q = art.get_joint_positions().squeeze()
+    pos, rot = ik.compute_forward_kinematics("fr3_hand_tcp", q[:7])
+    quat = rot_matrices_to_quats(np.array(rot).reshape(1, 3, 3))[0]
+
+    target_pos = pos + delta[:3]
+    target_quat = quat + delta[3:7]
+    target_quat /= np.linalg.norm(target_quat + 1e-8)
+
+    q_target = ik.compute_inverse_kinematics(
+        "fr3_hand_tcp", target_pos, target_quat
+    )[0]
+
+    cmd = q.copy()
+    cmd[:7] = q_target
+    cmd[7] = cmd[8] = np.clip(delta[7], 0.0, 0.08) / 2.0
+
+    for _ in range(20):
+        art.apply_action(ArticulationActions(joint_positions=cmd))
+
+# =====================================================================
+# Main
+# =====================================================================
+def main():
+    global initial_T_world_camera, initial_T_camera_marker
+    
+    open_stage(asset_path)
+
+    sim = SimulationContext()
+    sim.initialize_physics()
+
+    art = Articulation("/fr3")
+    art.initialize()
+    # # 真正的初始位置
+    initial_joint_position = np.array([-0.47200201, -0.53468038, 0.41885995, -2.64197119, 0.24759319,
+                                       2.1317271, 0.54534657, 0.04, 0.04])
+    # # x方向（向前）平移2cm
+    # initial_joint_position = np.array([-0.49183851, -0.46410037,  0.43962773, -2.58558015,  0.22938865,
+    #                                         2.14651702,  0.56456788,  0.04,  0.04])
+    # # x方向（向前）平移4cm
+    # initial_joint_position = np.array([-0.5121197 , -0.39750309,  0.46064247, -2.53006411,  0.208458  ,
+    #                                         2.16011791,  0.58498179,  0.04      ,  0.04      ])
+    # y方向（向右）平移2cm
+    # initial_joint_position = np.array([-0.45352914, -0.54309528,  0.45311303, -2.64096512,  0.26861368,
+    #                             2.12694205,  0.58240931,  0.04      ,  0.04      ])
+
+    for i in range(50):
+        art.set_joint_positions(initial_joint_position)
+        sim.step(render=True)
+    
+    ik = LulaKinematicsSolver(
+        urdf_path="/home/ani/isaacsim/exts/isaacsim.robot_motion.motion_generation/motion_policy_configs/FR3/fr3.urdf",
+        robot_description_path="/home/ani/isaacsim/exts/isaacsim.robot_motion.motion_generation/motion_policy_configs/FR3/rmpflow/fr3_robot_description.yaml",
+    )
+
+    camera = initial_camera("/fr3/fr3_hand_tcp/hand", 15, (1920, 1080))
+
+    # Initialize marker
+    marker = XFormPrim(marker_prim_path)
+    marker_world_pos, marker_world_quat = marker.get_world_pose()
+    print(f"Marker world pose: pos={marker_world_pos}, quat={marker_world_quat}")
+
+    state_buf = deque(maxlen=OBS_STEPS)
+    img_buf = deque(maxlen=IMG_STEPS)
+    action_queue = deque()
+
+    sim.play()
+    
+    # Initialize marker tracking after a few simulation steps
+    for _ in range(50):
+        sim.step(render=True)
+    
+    print("\n" + "="*60)
+    print("Initializing marker tracking...")
+    print("="*60)
+    initial_T_world_camera, initial_T_camera_marker = initialize_marker_tracking(camera, marker)
+    marker_pose_7d = compute_marker_pose_from_camera_motion(camera, initial_T_world_camera, initial_T_camera_marker)
+    print(f"Initial marker pose (7D): {marker_pose_7d}")
+    print("="*60 + "\n")
+    
+    print("[Isaac] Dual-socket control started")
+
+    while sim.is_playing():
+        rgb = get_rgb(camera)
+        
+        # Get marker pose instead of TCP pose
+        if initial_T_world_camera is None or initial_T_camera_marker is None:
+            print("Warning: Marker tracking not initialized, skipping frame")
+            sim.step(render=True)
+            continue
+        
+        marker_pose = compute_marker_pose_from_camera_motion(
+            camera, 
+            initial_T_world_camera, 
+            initial_T_camera_marker
+        )
+
+        if rgb is None or marker_pose is None:
+            sim.step(render=True)
+            continue
+
+        state_buf.append(marker_pose)
+        img_buf.append(rgb)
+
+        if len(action_queue) == 0:
+            if len(state_buf) >= OBS_STEPS and len(img_buf) >= IMG_STEPS:
+                obs = {
+                    "state": np.stack(state_buf, axis=0),
+                    "image": np.stack(img_buf, axis=0),
+                }
+
+                seg_sock.send_pyobj(obs)
+                seg_sock.recv()
+
+                action_seq = action_sock.recv_pyobj()
+                action_sock.send(b"ok")
+                
+                # print(f"Received {len(action_seq)} actions")
+                print(f"Received action: {action_seq[0]}")
+                action_queue.extend(action_seq)
+            else:
+                if len(state_buf) < OBS_STEPS or len(img_buf) < IMG_STEPS:
+                    print("Waiting for observation buffer to fill...")
+
+        if len(action_queue) > 0:
+            delta = action_queue.popleft()
+            apply_delta_action(art, ik, delta)
+
+        sim.step(render=True)
+
+    sim.stop()
+    simulation_app.close()
+
+if __name__ == "__main__":
+    main()
