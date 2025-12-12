@@ -151,7 +151,7 @@ def main():
 
     art = Articulation("/fr3")
     art.initialize()
-    # # 真正的初始方向
+    # # 真正的初始位置
     initial_joint_position = np.array([-0.47200201, -0.53468038, 0.41885995, -2.64197119, 0.24759319,
                                        2.1317271, 0.54534657, 0.04, 0.04])
     # # x方向（向前）平移2cm
@@ -228,57 +228,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# sent_once = False
-# waiting_for_action = False
-# while sim.is_playing():
-#         rgb = get_rgb(camera)
-#         pose = get_tcp_pose(art, ik)
-
-#         # -----------------------
-#         # 1. obs validity gate
-#         # -----------------------
-#         if rgb is None or pose is None:
-#             sim.step(render=True)
-#             continue
-
-#         state_buf.append(pose)
-#         img_buf.append(rgb)
-
-#         if len(state_buf) < OBS_STEPS or len(img_buf) < IMG_STEPS:
-#             sim.step(render=True)
-#             continue
-
-#         obs = {
-#             "state": np.stack(state_buf, axis=0),
-#             "image": np.stack(img_buf, axis=0),
-#         }
-
-#         # -----------------------
-#         # 2. send obs → seg
-#         # -----------------------
-#         seg_sock.send_pyobj(obs)
-#         seg_sock.recv()
-
-#         sent_once = True
-#         waiting_for_action = True
-
-#         # -----------------------
-#         # 3. wait action ONLY if sent_once
-#         # -----------------------
-#         if waiting_for_action:
-#             action_seq = action_sock.recv_pyobj()
-#             action_sock.send(b"ok")
-
-#             delta = action_seq[0]
-
-#             print(f"{delta.shape=}")
-#             print(f"{delta=}")
-
-#             # for delta in action_seq:
-#             #     apply_delta_action(art, ik, delta)
-#             apply_delta_action(art, ik, delta)
-#             waiting_for_action = False
-
-#         sim.step(render=True)

@@ -150,7 +150,7 @@ if __name__ == "__main__":
     #     "episodes_subsampled"
     # )
     # episodes_root = "/home/ani/isaacsim/my_collections/episodes_subsampled"
-    episodes_root = "/portal/test_data/episodes_subsampled_1210_B_mode"
+    episodes_root = "/portal/test_data/episodes_subsampled_1210_B_mode_aug"
 
     save_dir = os.path.join(episodes_root, "data_seg")
     convert_episodes_to_npz(episodes_root, save_dir)

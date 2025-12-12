@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 from pathlib import Path
 
+# python my_collections/print_npz_txt.py /portal/test_data/episodes_subsampled/episode_0000/ee_pose/end_poses.npz -o /portal/test_data/episodes_subsampled/episode_0000/marker_data.txt
 
 def print_npz_contents(npz_path, output_path=None):
     """

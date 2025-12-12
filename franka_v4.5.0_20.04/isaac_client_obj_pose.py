@@ -39,13 +39,13 @@ from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, quats_t
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 asset_path = ROOT_DIR + "/franka_manipulation.usd"
 
-# SEG_ADDR = "tcp://192.168.56.55:5556"     # seg server
-SEG_ADDR = "tcp://192.168.56.56:5555"
+SEG_ADDR = "tcp://192.168.56.55:5556"     # seg server
+# SEG_ADDR = "tcp://192.168.56.56:5555"
 ACTION_BIND = "tcp://192.168.56.56:5557"  # policy → isaac
 
 TARGET_H, TARGET_W = 448, 448
-OBS_STEPS = 2
-IMG_STEPS = 2
+OBS_STEPS = 3
+IMG_STEPS = 3
 
 # Marker prim path
 marker_prim_path = "/_40_large_marker"
@@ -337,6 +337,7 @@ def main():
             initial_T_world_camera, 
             initial_T_camera_marker
         )
+        print(f"{marker_pose=}")
 
         if rgb is None or marker_pose is None:
             sim.step(render=True)
@@ -359,7 +360,7 @@ def main():
                 action_sock.send(b"ok")
                 
                 # print(f"Received {len(action_seq)} actions")
-                print(f"Received action: {action_seq[0]}")
+                # print(f"Received action: {action_seq[0]}")
                 action_queue.extend(action_seq)
             else:
                 if len(state_buf) < OBS_STEPS or len(img_buf) < IMG_STEPS:
