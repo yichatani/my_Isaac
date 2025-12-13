@@ -422,7 +422,9 @@ def queue_frame_for_recording(art, ik, camera):
         if data_dict is None:
             print("Warning: Camera data is None, skipping frame")
             return
-        rgb_resized, depth_resized = resize_images(data_dict["rgb"], data_dict["depth"])
+        # rgb_resized, depth_resized = resize_images(data_dict["rgb"], data_dict["depth"])
+        rgb_resized = data_dict["rgb"]
+        depth_resized = data_dict["depth"]
         
         # Prepare data packet
         data_packet = {
@@ -553,7 +555,12 @@ def main():
         simulation_context.step(render=True)
 
     # Camera
-    camera = initial_camera(camera_prim_path, 60, (1920, 1080))
+    # camera = initial_camera(camera_prim_path, 60, (1920, 1080))
+    camera = initial_camera(camera_prim_path, 5, (448, 448))
+
+    K = camera.get_intrinsics_matrix()
+    print("K =\n", K)
+    exit()
 
     # Object (Marker)
     marker = XFormPrim(marker_prim_path)
