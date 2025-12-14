@@ -37,6 +37,7 @@ robot_description_path = "/home/ani/isaacsim/exts/isaacsim.robot_motion.motion_g
 # Prim path
 marker_prim_path = "/_40_large_marker"
 camera_prim_path = "/fr3/fr3_hand_tcp/hand"
+tcp_prim_path = "/fr3/fr3_hand_tcp"
 
 # Recording settings
 TARGET_HEIGHT = 448
@@ -47,6 +48,7 @@ TARGET_WIDTH = 448
 ee_poses_list = []
 marker_poses_list = []
 capture_durations = []
+camera_poses_list = []
 frame_index = 0
 # ===================================================================================================
 
@@ -170,11 +172,16 @@ def get_franka_end_effector_pose(art, ik):
     # Get current joint positions
     joint_positions = art.get_joint_positions().squeeze()
     
-    # Compute forward kinematics for end effector
-    tcp_position, tcp_rotation = ik.compute_forward_kinematics(
-        "fr3_hand_tcp",
-        joint_positions[:7]
-    )
+    
+    # # Compute forward kinematics for end effector
+    # tcp_position, tcp_rotation = ik.compute_forward_kinematics(
+    #     "fr3_hand_tcp",
+    #     joint_positions[:7]
+    # )
+    tcp = XFormPrim(tcp_prim_path)
+    tcp_position, tcp_quat = tcp.get_local_pose()
+    tcp_rotation = quats_to_rot_matrices(tcp_quat)
+    print(f"{tcp_position=}, {tcp_quat=}")
     
     # Ensure position is 1D array
     tcp_position = np.array(tcp_position).flatten()
@@ -301,7 +308,7 @@ def save_all_data(episode_dir):
     
     # Create subdirectories if needed
     ee_pose_dir = os.path.join(episode_dir, "ee_pose")
-    marker_pose_dir = os.path.join(episode_dir, "marker_pose")
+    marker_pose_dir = os.path.join(episode_dir, "obj_pose")
     os.makedirs(ee_pose_dir, exist_ok=True)
     os.makedirs(marker_pose_dir, exist_ok=True)
     
@@ -311,7 +318,7 @@ def save_all_data(episode_dir):
         ee_timestamps_array = np.array([p['timestamp'] for p in ee_poses_list])
         ee_indices_array = np.array([p['frame_index'] for p in ee_poses_list])
         
-        ee_npz_path = os.path.join(ee_pose_dir, "end_poses.npz")
+        ee_npz_path = os.path.join(ee_pose_dir, "ee_poses.npz")
         np.savez(
             ee_npz_path,
             poses=ee_poses_array,
@@ -326,7 +333,7 @@ def save_all_data(episode_dir):
         marker_timestamps_array = np.array([p['timestamp'] for p in marker_poses_list])
         marker_indices_array = np.array([p['frame_index'] for p in marker_poses_list])
         
-        marker_npz_path = os.path.join(marker_pose_dir, "marker_poses.npz")
+        marker_npz_path = os.path.join(marker_pose_dir, "obj_poses.npz")
         np.savez(
             marker_npz_path,
             poses=marker_poses_array,
@@ -348,6 +355,24 @@ def save_all_data(episode_dir):
         print(f"[Saving Data] Capture timing - Avg: {metadata['avg_capture_duration_ms']:.2f}ms, "
               f"Max: {metadata['max_capture_duration_ms']:.2f}ms")
     
+    # Save camera poses
+    if len(camera_poses_list) > 0:
+        camera_poses_array = np.array([p['pose'] for p in camera_poses_list])
+        camera_timestamps_array = np.array([p['timestamp'] for p in camera_poses_list])
+        camera_indices_array = np.array([p['frame_index'] for p in camera_poses_list])
+
+        camera_pose_dir = os.path.join(episode_dir, "camera_pose")
+        os.makedirs(camera_pose_dir, exist_ok=True)
+
+        camera_npz_path = os.path.join(camera_pose_dir, "camera_poses.npz")
+        np.savez(
+            camera_npz_path,
+            poses=camera_poses_array,
+            timestamps=camera_timestamps_array,
+            indices=camera_indices_array
+        )
+        print(f"[Saving Data] Saved {len(camera_poses_list)} camera poses to {camera_npz_path}")
+
     print(f"[Saving Data] All data saved successfully!")
 # ==================================================================================
 
@@ -433,6 +458,15 @@ def recording(art, ik, camera, episode_dir, simulation_context):
             initial_T_world_camera, 
             initial_T_camera_marker
         )
+
+        # ============ camera world pose ============
+        camera_world_pos, camera_world_quat = camera.get_world_pose()
+        camera_world_pose_7d = np.concatenate([
+            np.array(camera_world_pos).reshape(-1),
+            np.array(camera_world_quat).reshape(-1)
+        ])
+        # ===============================================
+
         
         capture_duration = time.time() - capture_start
         capture_durations.append(capture_duration)
@@ -473,6 +507,13 @@ def recording(art, ik, camera, episode_dir, simulation_context):
             'timestamp': timestamp,
             'pose': marker_pose_7d
         })
+
+        camera_poses_list.append({
+            'frame_index': frame_index,
+            'timestamp': timestamp,
+            'pose': camera_world_pose_7d
+        })
+
         # ===================================================================
         
         if frame_index % 10 == 0:
@@ -591,6 +632,10 @@ def main():
 
     global last_rgb_hash
     last_rgb_hash = None
+
+    global camera_poses_list
+    camera_poses_list = []
+
     # ==============================================================
     
     # Stage
@@ -625,6 +670,10 @@ def main():
 
     # Camera
     camera = initial_camera(camera_prim_path, 10, (1920, 1080))
+    # camera_world_pose = camera.get_world_pose()
+    # print(f"{camera_world_pose=}")
+    # camera_world_rotation = quats_to_rot_matrices(camera_world_pose[1])
+    # print(f"{camera_world_rotation=}")
 
     # Object (Marker)
     marker = XFormPrim(marker_prim_path)
