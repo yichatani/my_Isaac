@@ -241,7 +241,27 @@ def get_tcp_pose(art, ik):
     width = q[7] + q[8]
     return np.concatenate([pos, quat, [width]]).astype(np.float32)
 
-def apply_delta_action(art, ik, delta):
+# def apply_delta_action(art, ik, delta):
+#     q = art.get_joint_positions().squeeze()
+#     pos, rot = ik.compute_forward_kinematics("fr3_hand_tcp", q[:7])
+#     quat = rot_matrices_to_quats(np.array(rot).reshape(1, 3, 3))[0]
+
+#     target_pos = pos + delta[:3]
+#     target_quat = quat + delta[3:7]
+#     target_quat /= np.linalg.norm(target_quat + 1e-8)
+
+#     q_target = ik.compute_inverse_kinematics(
+#         "fr3_hand_tcp", target_pos, target_quat
+#     )[0]
+
+#     cmd = q.copy()
+#     cmd[:7] = q_target
+#     cmd[7] = cmd[8] = np.clip(delta[7], 0.0, 0.08) / 2.0
+
+#     for _ in range(20):
+#         art.apply_action(ArticulationActions(joint_positions=cmd))
+
+def apply_delta_action_step(art, ik, delta):
     q = art.get_joint_positions().squeeze()
     pos, rot = ik.compute_forward_kinematics("fr3_hand_tcp", q[:7])
     quat = rot_matrices_to_quats(np.array(rot).reshape(1, 3, 3))[0]
@@ -258,8 +278,8 @@ def apply_delta_action(art, ik, delta):
     cmd[:7] = q_target
     cmd[7] = cmd[8] = np.clip(delta[7], 0.0, 0.08) / 2.0
 
-    for _ in range(20):
-        art.apply_action(ArticulationActions(joint_positions=cmd))
+    art.apply_action(ArticulationActions(joint_positions=cmd))
+
 
 # =====================================================================
 # Main
@@ -323,29 +343,61 @@ def main():
     
     print("[Isaac] Dual-socket control started")
 
+
+    step_idx = 0
+
     while sim.is_playing():
-        rgb = get_rgb(camera)
-        
-        # Get marker pose instead of TCP pose
+        # =========================================================
+        # 0) （可选但推荐）本 step 执行动作：最多一个 action
+        #    注意：这里只 apply，不 step
+        # =========================================================
+        if len(action_queue) > 0:
+            delta = action_queue.popleft()
+            apply_delta_action_step(art, ik, delta)
+
+        # =========================================================
+        # 1) 本循环唯一一次物理推进（固定位置，绝不在分支里 step）
+        # =========================================================
+        sim.step(render=True)
+        step_idx += 1
+
+        # =========================================================
+        # 2) step 后采样：保证 rgb / marker_pose 同一 tick
+        # =========================================================
         if initial_T_world_camera is None or initial_T_camera_marker is None:
-            print("Warning: Marker tracking not initialized, skipping frame")
-            sim.step(render=True)
+            # marker tracking 未初始化：本 step 不采集，但时间轴不乱
+            if step_idx % 30 == 0:
+                print("[Isaac] Marker tracking not initialized yet...")
             continue
-        
+
+        rgb = get_rgb(camera)
+        if rgb is None:
+            # 相机偶尔拿不到帧：跳过采样，但不额外 step
+            continue
+
         marker_pose = compute_marker_pose_from_camera_motion(
-            camera, 
-            initial_T_world_camera, 
+            camera,
+            initial_T_world_camera,
             initial_T_camera_marker
         )
-        print(f"{marker_pose=}")
 
-        if rgb is None or marker_pose is None:
-            sim.step(render=True)
+        if marker_pose is None:
             continue
 
+        # =========================================================
+        # 3) 写入 buffer：每一次成功采样严格对应一个 sim.step 后状态
+        # =========================================================
         state_buf.append(marker_pose)
         img_buf.append(rgb)
 
+        # （可选）低频打印，避免每步 print 卡顿
+        if step_idx % 30 == 0:
+            print(f"[Isaac] step={step_idx}, buf={len(state_buf)}/{OBS_STEPS}, action_q={len(action_queue)}")
+
+        # =========================================================
+        # 4) 需要新 action 时：只在 action_queue 为空且 buffer 满时请求
+        #    注意：这段可能阻塞，但不会破坏“1 loop = 1 step”的结构
+        # =========================================================
         if len(action_queue) == 0:
             if len(state_buf) >= OBS_STEPS and len(img_buf) >= IMG_STEPS:
                 obs = {
@@ -353,27 +405,76 @@ def main():
                     "image": np.stack(img_buf, axis=0),
                 }
 
+                # Isaac -> Seg (REQ)
                 seg_sock.send_pyobj(obs)
                 seg_sock.recv()
 
+                # Policy -> Isaac (REP)
                 action_seq = action_sock.recv_pyobj()
                 action_sock.send(b"ok")
-                
-                # print(f"Received {len(action_seq)} actions")
-                # print(f"Received action: {action_seq[0]}")
+
                 action_queue.extend(action_seq)
             else:
-                if len(state_buf) < OBS_STEPS or len(img_buf) < IMG_STEPS:
-                    print("Waiting for observation buffer to fill...")
-
-        if len(action_queue) > 0:
-            delta = action_queue.popleft()
-            apply_delta_action(art, ik, delta)
-
-        sim.step(render=True)
+                # buffer 还没满，不请求 action
+                pass
 
     sim.stop()
     simulation_app.close()
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+##Old loop
+
+# while sim.is_playing():
+#     rgb = get_rgb(camera)
+    
+#     # Get marker pose instead of TCP pose
+#     if initial_T_world_camera is None or initial_T_camera_marker is None:
+#         print("Warning: Marker tracking not initialized, skipping frame")
+#         sim.step(render=True)
+#         continue
+    
+#     marker_pose = compute_marker_pose_from_camera_motion(
+#         camera, 
+#         initial_T_world_camera, 
+#         initial_T_camera_marker
+#     )
+#     print(f"{marker_pose=}")
+
+#     if rgb is None or marker_pose is None:
+#         sim.step(render=True)
+#         continue
+
+#     state_buf.append(marker_pose)
+#     img_buf.append(rgb)
+
+#     if len(action_queue) == 0:
+#         if len(state_buf) >= OBS_STEPS and len(img_buf) >= IMG_STEPS:
+#             obs = {
+#                 "state": np.stack(state_buf, axis=0),
+#                 "image": np.stack(img_buf, axis=0),
+#             }
+
+#             seg_sock.send_pyobj(obs)
+#             seg_sock.recv()
+
+#             action_seq = action_sock.recv_pyobj()
+#             action_sock.send(b"ok")
+            
+#             # print(f"Received {len(action_seq)} actions")
+#             # print(f"Received action: {action_seq[0]}")
+#             action_queue.extend(action_seq)
+#         else:
+#             if len(state_buf) < OBS_STEPS or len(img_buf) < IMG_STEPS:
+#                 print("Waiting for observation buffer to fill...")
+
+#     if len(action_queue) > 0:
+#         delta = action_queue.popleft()
+#         apply_delta_action(art, ik, delta)
+
+#     sim.step(render=True)

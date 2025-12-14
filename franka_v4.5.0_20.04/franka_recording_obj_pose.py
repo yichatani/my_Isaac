@@ -20,15 +20,13 @@ euler_angles_to_quats, quats_to_euler_angles, quats_to_rot_matrices
 from scipy.spatial.transform import Rotation as R
 
 import cv2
-import threading
-import queue
 import time
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # portal dir is a unique path to save data in my pc
 PORTAL_DIR = "/portal/test_data"
-DATA_DIR = os.path.join(PORTAL_DIR, "episodes")
+DATA_DIR = os.path.join(PORTAL_DIR, "episodes_sync")
 
 asset_path = ROOT_DIR + "/franka_manipulation.usd"
 urdf_path = "/home/ani/isaacsim/exts/isaacsim.robot_motion.motion_generation/" \
@@ -44,13 +42,26 @@ camera_prim_path = "/fr3/fr3_hand_tcp/hand"
 TARGET_HEIGHT = 448
 TARGET_WIDTH = 448
 
-# Thread-safe queue for recording data
-recording_queue = queue.Queue()
-recording_active = threading.Event()
+# ============ MODIFICATION: Remove threading, use global lists for synchronous recording ============
+# Global variables to store data during recording
+ee_poses_list = []
+marker_poses_list = []
+capture_durations = []
+frame_index = 0
+# ===================================================================================================
 
 # Global variables to store initial states
 initial_T_world_camera = None
 initial_T_camera_marker = None
+
+# ============ ADD: camera frame sync ============
+last_camera_frame_id = None
+# ===============================================
+# ============ ADD: rgb content sync ============
+last_rgb_hash = None
+# ==============================================
+
+
 
 
 def initial_camera(camera_path, frequency, resolution):
@@ -278,76 +289,21 @@ def compute_marker_pose_from_camera_motion(camera, initial_T_world_camera, initi
     return marker_in_camera_pos, marker_in_camera_quat
 
 
-def recording_thread_worker(episode_dir):
+# ============ MODIFICATION: Remove threading worker, add save function ============
+def save_all_data(episode_dir):
     """
-    Worker thread that continuously saves data from the queue
+    Save all collected data at the end of recording.
+    Called once after all recording is complete.
     """
-    print(f"[Recording Thread] Started, saving to {episode_dir}")
+    global ee_poses_list, marker_poses_list, capture_durations
     
-    # Create subdirectories
-    rgb_dir = os.path.join(episode_dir, "rgb")
-    depth_dir = os.path.join(episode_dir, "depth")
+    print(f"\n[Saving Data] Saving all data to {episode_dir}...")
+    
+    # Create subdirectories if needed
     ee_pose_dir = os.path.join(episode_dir, "ee_pose")
     marker_pose_dir = os.path.join(episode_dir, "marker_pose")
-    
-    os.makedirs(rgb_dir, exist_ok=True)
-    os.makedirs(depth_dir, exist_ok=True)
     os.makedirs(ee_pose_dir, exist_ok=True)
     os.makedirs(marker_pose_dir, exist_ok=True)
-    
-    ee_poses_list = []
-    marker_poses_list = []
-    frame_index = 0
-    
-    while recording_active.is_set() or not recording_queue.empty():
-        try:
-            data = recording_queue.get(timeout=0.5)
-            
-            rgb = data['rgb']
-            depth = data['depth']
-            ee_pose = data['ee_pose']
-            marker_in_camera_pos = data['marker_in_camera_pos']
-            marker_in_camera_quat = data['marker_in_camera_quat']
-            timestamp = data['timestamp']
-            
-            # Save RGB image
-            rgb_path = os.path.join(rgb_dir, f"{frame_index:06d}.png")
-            rgb_img = Image.fromarray(rgb)
-            rgb_img.save(rgb_path)
-            
-            # Save depth image
-            depth_path = os.path.join(depth_dir, f"{frame_index:06d}.png")
-            depth_uint16 = (depth * 1000).astype(np.uint16)
-            depth_img = Image.fromarray(depth_uint16)
-            depth_img.save(depth_path)
-            
-            # Collect end effector pose data
-            ee_poses_list.append({
-                'frame_index': frame_index,
-                'timestamp': timestamp,
-                'pose': ee_pose
-            })
-            
-            # Collect marker pose data (concatenate position and quaternion)
-            marker_pose_7d = np.concatenate([marker_in_camera_pos, marker_in_camera_quat])
-            marker_poses_list.append({
-                'frame_index': frame_index,
-                'timestamp': timestamp,
-                'pose': marker_pose_7d
-            })
-            
-            frame_index += 1
-            
-            if frame_index % 10 == 0:
-                print(f"[Recording Thread] Saved {frame_index} frames")
-            
-            recording_queue.task_done()
-            
-        except queue.Empty:
-            continue
-        except Exception as e:
-            print(f"[Recording Thread] Error: {e}")
-            continue
     
     # Save end effector poses
     if len(ee_poses_list) > 0:
@@ -362,7 +318,7 @@ def recording_thread_worker(episode_dir):
             timestamps=ee_timestamps_array,
             indices=ee_indices_array
         )
-        print(f"[Recording Thread] Saved {len(ee_poses_list)} end effector poses to {ee_npz_path}")
+        print(f"[Saving Data] Saved {len(ee_poses_list)} end effector poses to {ee_npz_path}")
     
     # Save marker poses
     if len(marker_poses_list) > 0:
@@ -377,9 +333,23 @@ def recording_thread_worker(episode_dir):
             timestamps=marker_timestamps_array,
             indices=marker_indices_array
         )
-        print(f"[Recording Thread] Saved {len(marker_poses_list)} marker poses to {marker_npz_path}")
+        print(f"[Saving Data] Saved {len(marker_poses_list)} marker poses to {marker_npz_path}")
     
-    print(f"[Recording Thread] Finished. Total frames: {frame_index}")
+    # Save metadata
+    if len(capture_durations) > 0:
+        metadata = {
+            'total_frames': len(ee_poses_list),
+            'avg_capture_duration_ms': np.mean(capture_durations) * 1000,
+            'max_capture_duration_ms': np.max(capture_durations) * 1000,
+            'capture_durations': np.array(capture_durations)
+        }
+        metadata_path = os.path.join(episode_dir, "metadata.npz")
+        np.savez(metadata_path, **metadata)
+        print(f"[Saving Data] Capture timing - Avg: {metadata['avg_capture_duration_ms']:.2f}ms, "
+              f"Max: {metadata['max_capture_duration_ms']:.2f}ms")
+    
+    print(f"[Saving Data] All data saved successfully!")
+# ==================================================================================
 
 
 def create_episode_directory():
@@ -392,21 +362,69 @@ def create_episode_directory():
     episode_dir = os.path.join(DATA_DIR, f"episode_{num_dirs:04d}")
     os.makedirs(episode_dir, exist_ok=True)
     
+    # ============ MODIFICATION: Create subdirectories upfront ============
+    rgb_dir = os.path.join(episode_dir, "rgb")
+    depth_dir = os.path.join(episode_dir, "depth")
+    os.makedirs(rgb_dir, exist_ok=True)
+    os.makedirs(depth_dir, exist_ok=True)
+    # =====================================================================
+    
     print(f"Created episode directory: {episode_dir}")
     return episode_dir
 
 
-def queue_frame_for_recording(art, ik, camera):
+# ============ MODIFICATION: Completely rewrite recording function for synchronous operation ============
+def recording(art, ik, camera, episode_dir, simulation_context):
     """
-    Capture current frame and add to recording queue
+    SYNCHRONOUS recording function - saves data immediately in the main thread.
+    NO threading, NO queue - direct file I/O for guaranteed synchronization.
+    
+    This ensures that each simulation step is recorded immediately before the next step executes.
+    Camera frame rate no longer matters - we record whatever state exists after each sim.step().
     """
     global initial_T_world_camera, initial_T_camera_marker
+    global ee_poses_list, marker_poses_list, capture_durations, frame_index
     
     try:
+        # Get camera data first - validate before continuing
+        data_dict = rgb_and_depth(camera)
+        if data_dict is None:
+            print("Warning: Camera data is None, skipping frame")
+            return
+        
+
+        # ============ ADD: camera frame_id check ============
+        camera_data = camera.get_current_frame()
+        frame_id = camera_data.get("frame_id", None)
+
+        global last_camera_frame_id
+        if frame_id is not None:
+            if frame_id == last_camera_frame_id:
+                # Camera did NOT produce a new frame in this sim.step
+                return
+            last_camera_frame_id = frame_id
+        # ==================================================
+
+        # ============ ADD: RGB content hash check ============
+        rgb_raw = data_dict["rgb"]
+
+        # 使用一个非常快、足够稳的 hash
+        rgb_hash = hash(rgb_raw.tobytes())
+
+        global last_rgb_hash
+        if rgb_hash == last_rgb_hash:
+            # 图像内容完全没变，说明相机没有真正更新
+            return
+        last_rgb_hash = rgb_hash
+        # ====================================================
+
+        # Capture all pose data immediately after camera validation
+        capture_start = time.time()
+        
         # Get end effector pose
         ee_pose = get_franka_end_effector_pose(art, ik)
         
-        # Compute marker pose in current camera frame (relative to initial position)
+        # Compute marker pose in current camera frame
         if initial_T_world_camera is None or initial_T_camera_marker is None:
             raise ValueError("Initial marker tracking not initialized!")
         
@@ -416,38 +434,63 @@ def queue_frame_for_recording(art, ik, camera):
             initial_T_camera_marker
         )
         
-        # Get camera data
-        data_dict = rgb_and_depth(camera)
-        # Check if data is valid
-        if data_dict is None:
-            print("Warning: Camera data is None, skipping frame")
-            return
-        # rgb_resized, depth_resized = resize_images(data_dict["rgb"], data_dict["depth"])
-        rgb_resized = data_dict["rgb"]
-        depth_resized = data_dict["depth"]
+        capture_duration = time.time() - capture_start
+        capture_durations.append(capture_duration)
         
-        # Prepare data packet
-        data_packet = {
-            'rgb': rgb_resized.astype(np.uint8),
-            'depth': depth_resized.astype(np.float32),
-            'ee_pose': ee_pose,
-            'marker_in_camera_pos': marker_in_camera_pos,
-            'marker_in_camera_quat': marker_in_camera_quat,
-            'timestamp': time.time()
-        }
+        # Warn if capture is too slow
+        if capture_duration > 0.01:
+            print(f"Warning: Slow data capture ({capture_duration*1000:.1f}ms)")
         
-        # Add to queue
-        recording_queue.put(data_packet)
+        # Resize images
+        rgb_resized, depth_resized = resize_images(data_dict["rgb"], data_dict["depth"])
+        
+        # ============ SYNCHRONOUS SAVE: Write files immediately ============
+        timestamp = time.time()
+        
+        # Save RGB image immediately
+        rgb_dir = os.path.join(episode_dir, "rgb")
+        rgb_path = os.path.join(rgb_dir, f"{frame_index:06d}.png")
+        rgb_img = Image.fromarray(rgb_resized.astype(np.uint8))
+        rgb_img.save(rgb_path)
+        
+        # Save depth image immediately
+        depth_dir = os.path.join(episode_dir, "depth")
+        depth_path = os.path.join(depth_dir, f"{frame_index:06d}.png")
+        depth_uint16 = (depth_resized * 1000).astype(np.uint16)
+        depth_img = Image.fromarray(depth_uint16)
+        depth_img.save(depth_path)
+        
+        # Collect pose data (will be saved at the end)
+        ee_poses_list.append({
+            'frame_index': frame_index,
+            'timestamp': timestamp,
+            'pose': ee_pose
+        })
+        
+        marker_pose_7d = np.concatenate([marker_in_camera_pos, marker_in_camera_quat])
+        marker_poses_list.append({
+            'frame_index': frame_index,
+            'timestamp': timestamp,
+            'pose': marker_pose_7d
+        })
+        # ===================================================================
+        
+        if frame_index % 10 == 0:
+            print(f"[Recording] Saved frame {frame_index}")
+        
+        frame_index += 1
         
     except Exception as e:
-        print(f"Error queuing frame: {e}")
+        print(f"Error in recording: {e}")
         import traceback
         traceback.print_exc()
+# =====================================================================================================
 
 
-def arm_const_speed(art, target_arm, sim, ik, camera, record=False, step_size=0.1, eps=5e-3, is_target=True):
+def arm_const_speed(art, target_arm, sim, ik, camera, episode_dir, record=False, step_size=0.1, eps=5e-3, is_target=True):
     """
-    Move arm to target with constant speed, optionally recording
+    Move arm to target with constant speed, recording synchronously if requested.
+    Recording happens in the SAME thread - no background workers.
     """
     current = art.get_joint_positions().squeeze()
 
@@ -464,19 +507,24 @@ def arm_const_speed(art, target_arm, sim, ik, camera, record=False, step_size=0.
         cmd = current.copy()
         cmd[:7] += step
 
+        # Apply action
         art.apply_action(ArticulationActions(joint_positions=cmd))
+        
+        # Step simulation (with rendering)
         sim.step(render=True)
         
-        # Record frame if requested
+        # ============ SYNCHRONOUS RECORDING: Happens immediately in this thread ============
         if record:
-            queue_frame_for_recording(art, ik, camera)
+            recording(art, ik, camera, episode_dir, sim)
+        # ====================================================================================
 
         current = art.get_joint_positions().squeeze()
 
 
-def set_gripper(art, width, sim, ik, camera, record=False, steps=50):
+def set_gripper(art, width, sim, ik, camera, episode_dir, record=False, steps=50):
     """
-    Smoothly set gripper width over multiple steps
+    Smoothly set gripper width, recording synchronously if requested.
+    Recording happens in the SAME thread.
     """
     joint_pos = art.get_joint_positions().squeeze()
 
@@ -491,38 +539,59 @@ def set_gripper(art, width, sim, ik, camera, record=False, steps=50):
         cmd[7] = curr_width / 2
         cmd[8] = curr_width / 2
 
+        # Apply action
         art.apply_action(ArticulationActions(joint_positions=cmd))
+        
+        # Step simulation
         sim.step(render=True)
 
+        # ============ SYNCHRONOUS RECORDING ============
         if record:
-            queue_frame_for_recording(art, ik, camera)
+            recording(art, ik, camera, episode_dir, sim)
+        # ===============================================
 
 
-def hold_position(art, sim, ik, camera, record=False, duration=2.0):
+def hold_position(art, sim, ik, camera, episode_dir, record=False, duration=2.0):
     """
-    Hold current position for specified duration
+    Hold current position for duration, recording synchronously if requested.
+    Recording happens in the SAME thread.
     """
     current_cmd = art.get_joint_positions().squeeze()
     action = ArticulationActions(joint_positions=current_cmd)
     
     start_time = time.time()
-    frame_count = 0
     
     while time.time() - start_time < duration:
+        # Apply action
         art.apply_action(action)
+        
+        # Step simulation
         sim.step(render=True)
         
-        # Record at ~10 Hz during hold
-        if record and frame_count % 6 == 0:
-            queue_frame_for_recording(art, ik, camera)
-        
-        frame_count += 1
+        # ============ SYNCHRONOUS RECORDING ============
+        if record:
+            recording(art, ik, camera, episode_dir, sim)
+        # ===============================================
     
     print(f"Held position for {duration} seconds")
 
 
 def main():
     global initial_T_world_camera, initial_T_camera_marker
+    global frame_index, ee_poses_list, marker_poses_list, capture_durations
+    
+    # ============ MODIFICATION: Reset global variables ============
+    frame_index = 0
+    ee_poses_list = []
+    marker_poses_list = []
+    capture_durations = []
+
+    global last_camera_frame_id
+    last_camera_frame_id = None
+
+    global last_rgb_hash
+    last_rgb_hash = None
+    # ==============================================================
     
     # Stage
     print("Opening stage...")
@@ -555,12 +624,7 @@ def main():
         simulation_context.step(render=True)
 
     # Camera
-    # camera = initial_camera(camera_prim_path, 60, (1920, 1080))
-    camera = initial_camera(camera_prim_path, 5, (448, 448))
-
-    K = camera.get_intrinsics_matrix()
-    print("K =\n", K)
-    exit()
+    camera = initial_camera(camera_prim_path, 10, (1920, 1080))
 
     # Object (Marker)
     marker = XFormPrim(marker_prim_path)
@@ -602,39 +666,39 @@ def main():
     # Create episode directory
     episode_dir = create_episode_directory()
     
-    # Start recording thread
-    recording_active.set()
-    recording_thread = threading.Thread(target=recording_thread_worker, args=(episode_dir,))
-    recording_thread.start()
+    # ============ MODIFICATION: No recording thread to start ============
+    # Recording happens synchronously in the main thread
+    # ====================================================================
     
     print("\n" + "="*60)
-    print("Starting Grasp Demonstration with Recording")
+    print("Starting Grasp Demonstration with SYNCHRONOUS Recording")
     print("="*60 + "\n")
     
     print("Phase 1: Moving to initial position...")
     print("Phase 2: Moving to pre-grasp position...")
     arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera,
-                   record=True, is_target=False)
+                   episode_dir, record=True, is_target=False)
 
     print("Phase 3: Moving to grasp target...")
-    arm_const_speed(art, target_joint_position[:7], simulation_context, ik, camera, record=True)
+    arm_const_speed(art, target_joint_position[:7], simulation_context, ik, camera,
+                   episode_dir, record=True)
     
     print("Phase 4: Closing gripper...")
     set_gripper(art, width=0.0, sim=simulation_context, ik=ik, camera=camera,
-                record=True, steps=50)
+                episode_dir=episode_dir, record=True, steps=50)
     
     print("Phase 5: Returning with object...")
-    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera, record=True)
-    hold_position(art, simulation_context, ik, camera, record=True, duration=10.0)
+    arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera,
+                   episode_dir, record=True)
+    hold_position(art, simulation_context, ik, camera, episode_dir, record=True, duration=5.0)
     
     print("\n" + "="*60)
     print("Grasp demonstration completed!")
     print("="*60 + "\n")
     
-    # Stop recording thread
-    print("Stopping recording thread...")
-    recording_active.clear()
-    recording_thread.join()
+    # ============ MODIFICATION: Save pose data at the end ============
+    save_all_data(episode_dir)
+    # =================================================================
     
     print(f"\nAll data saved to: {episode_dir}")
     
