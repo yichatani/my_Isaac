@@ -17,7 +17,8 @@ from omni.isaac.core.utils.stage import open_stage, get_current_stage
 from omni.isaac.core.utils.extensions import get_extension_path_from_name
 from omni.isaac.core.utils.numpy.rotations import rot_matrices_to_quats, \
 euler_angles_to_quats, quats_to_euler_angles, quats_to_rot_matrices
-from scipy.spatial.transform import Rotation as R
+# from scipy.spatial.transform import Rotation as R
+from pxr import UsdPhysics, PhysxSchema, UsdGeom
 
 import cv2
 import time
@@ -37,6 +38,7 @@ robot_description_path = "/home/ani/isaacsim/exts/isaacsim.robot_motion.motion_g
 # Prim path
 marker_prim_path = "/_40_large_marker"
 camera_prim_path = "/fr3/fr3_hand_tcp/hand"
+# camera_prim_path = "/fr3/fr3_hand_tcp/camera_mount/hand"
 tcp_prim_path = "/fr3/fr3_hand_tcp"
 
 # Recording settings
@@ -63,8 +65,13 @@ last_camera_frame_id = None
 last_rgb_hash = None
 # ==============================================
 
-
-
+# T_cam_in_tcp = np.eye(4)
+# quat_cam_in_tcp = np.array([0.0, 0.537, 0.0, 0.843])
+# R_cam_in_tcp = quats_to_rot_matrices(quat_cam_in_tcp)
+# T_cam_in_tcp[:3,:3] = R_cam_in_tcp
+# T_cam_in_tcp[:3,3] = np.array([0.129,-0.007,-0.172])
+# # print(f"{T_cam_in_tcp=}")
+# # exit()
 
 def initial_camera(camera_path, frequency, resolution):
     """Initialize Camera"""
@@ -173,7 +180,7 @@ def get_franka_end_effector_pose(art, ik):
     joint_positions = art.get_joint_positions().squeeze()
     
     
-    # # Compute forward kinematics for end effector
+    # Compute forward kinematics for end effector
     # tcp_position, tcp_rotation = ik.compute_forward_kinematics(
     #     "fr3_hand_tcp",
     #     joint_positions[:7]
@@ -181,7 +188,7 @@ def get_franka_end_effector_pose(art, ik):
     tcp = XFormPrim(tcp_prim_path)
     tcp_position, tcp_quat = tcp.get_local_pose()
     tcp_rotation = quats_to_rot_matrices(tcp_quat)
-    print(f"{tcp_position=}, {tcp_quat=}")
+    # print(f"{tcp_position=}, {tcp_quat=}")
     
     # Ensure position is 1D array
     tcp_position = np.array(tcp_position).flatten()
@@ -410,6 +417,29 @@ def recording(art, ik, camera, episode_dir, simulation_context):
     global initial_T_world_camera, initial_T_camera_marker
     global ee_poses_list, marker_poses_list, capture_durations, frame_index
     
+    # # manually set camera world pose
+    # # camera=
+    # global T_cam_in_tcp
+    # tcp = XFormPrim(tcp_prim_path)
+    # # tcp_position_local, tcp_quat_local = tcp.get_local_pose()
+    # # print(f"{tcp_position_local=}, {tcp_quat_local=}")
+    # tcp_position_world, tcp_quat_world = tcp.get_world_pose()
+    # # print(f"{tcp_position_world=}, {tcp_quat_world=}")
+    # # exit()
+    # T_tcp_in_world = np.eye(4)
+    # R_tcp_in_world = quats_to_rot_matrices(tcp_quat_world)
+    # T_tcp_in_world[:3,:3] = R_tcp_in_world
+    # T_tcp_in_world[:3,3] = tcp_position_world
+    # print(f"{T_tcp_in_world=}")
+
+    # T_cam_in_world = T_tcp_in_world @ T_cam_in_tcp
+    # print(f"{T_cam_in_world=}")
+    # quat_cam_in_world = rot_matrices_to_quats(T_cam_in_world[:3,:3])
+    # pos_cam_in_world = T_cam_in_world[:3,3]
+    
+    # camera.set_world_pose(position=pos_cam_in_world, orientation=quat_cam_in_world)
+    # simulation_context.step(render=True)
+
     try:
         # Get camera data first - validate before continuing
         data_dict = rgb_and_depth(camera)
@@ -465,9 +495,15 @@ def recording(art, ik, camera, episode_dir, simulation_context):
             np.array(camera_world_pos).reshape(-1),
             np.array(camera_world_quat).reshape(-1)
         ])
+
+        # camera_local_pose = camera.get_local_pose()
+        # print(f"{camera_local_pose[1]=}")
+
+        # art_world_pose = art.get_world_poses()
+        # print(f"{art_world_pose[1]=}")
+
         # ===============================================
 
-        
         capture_duration = time.time() - capture_start
         capture_durations.append(capture_duration)
         
@@ -552,6 +588,7 @@ def arm_const_speed(art, target_arm, sim, ik, camera, episode_dir, record=False,
         art.apply_action(ArticulationActions(joint_positions=cmd))
         
         # Step simulation (with rendering)
+        # for i in range(5):
         sim.step(render=True)
         
         # ============ SYNCHRONOUS RECORDING: Happens immediately in this thread ============
@@ -584,6 +621,7 @@ def set_gripper(art, width, sim, ik, camera, episode_dir, record=False, steps=50
         art.apply_action(ArticulationActions(joint_positions=cmd))
         
         # Step simulation
+        # for i in range(5):
         sim.step(render=True)
 
         # ============ SYNCHRONOUS RECORDING ============
@@ -607,6 +645,7 @@ def hold_position(art, sim, ik, camera, episode_dir, record=False, duration=2.0)
         art.apply_action(action)
         
         # Step simulation
+        # for i in range(5):
         sim.step(render=True)
         
         # ============ SYNCHRONOUS RECORDING ============
@@ -615,6 +654,41 @@ def hold_position(art, sim, ik, camera, episode_dir, record=False, duration=2.0)
         # ===============================================
     
     print(f"Held position for {duration} seconds")
+
+
+
+def make_camera_kinematic_rigid(stage, camera_prim_path):
+    """
+    强制移除相机的物理属性（刚体、碰撞、关节），使其成为纯粹的运动学子物体。
+    这样它会 100% 刚性地跟随父物体，不会有任何物理惯性或抖动。
+    """
+    print(f"Forcefully removing physics properties from {camera_prim_path} to stop jitter...")
+    
+    prim = stage.GetPrimAtPath(camera_prim_path)
+    if not prim.IsValid():
+        print(f"Error: Camera prim {camera_prim_path} not found!")
+        return
+
+    # 1. 移除刚体 API (Rigid Body) - 让它失去质量和惯性
+    if prim.HasAPI(UsdPhysics.RigidBodyAPI):
+        prim.RemoveAPI(UsdPhysics.RigidBodyAPI)
+        print("  - Removed RigidBodyAPI")
+
+    # 2. 移除碰撞 API (Collision) - 防止它和手臂或其他物体发生碰撞计算
+    if prim.HasAPI(UsdPhysics.CollisionAPI):
+        prim.RemoveAPI(UsdPhysics.CollisionAPI)
+        print("  - Removed CollisionAPI")
+        
+    # 3. 如果有质量属性，强制设为 0 (双重保险)
+    mass_api = UsdPhysics.MassAPI(prim)
+    if mass_api:
+        mass_api.GetMassAttr().Set(0.0)
+    
+    # 4. [关键] 确保它是父物体的直接子级，并且没有 Joint 连接
+    # 如果你的 USD 结构里，相机是通过 Joint 连接的，这步需要额外处理。
+    # 但通常移除 RigidBody 就足以让 Joint 失效（因为没有质量了），它会退化为层级跟随。
+    
+    print("Camera is now a kinematic ghost attached to the hand.")
 
 
 def main():
@@ -650,6 +724,8 @@ def main():
     art = Articulation("/fr3")
     art.initialize()
     art_world_pose = art.get_world_poses()
+    # print(f"{art_world_pose=}")
+    # exit()
     
     initial_joint_position = np.array([-0.47200201, -0.53468038, 0.41885995, -2.64197119, 0.24759319,
                                        2.1317271, 0.54534657, 0.04, 0.04])
@@ -663,17 +739,21 @@ def main():
     initial_tcp_position, initial_tcp_rotation = ik.compute_forward_kinematics("fr3_hand_tcp",
                                                                                 initial_joint_position[:7])
     
+    art.set_joint_positions(initial_joint_position)
     # Initialize robot position
-    for i in range(50):
-        art.set_joint_positions(initial_joint_position)
-        simulation_context.step(render=True)
+    # for i in range(50):
+    #     simulation_context.step(render=True)
 
     # Camera
     camera = initial_camera(camera_prim_path, 10, (1920, 1080))
-    # camera_world_pose = camera.get_world_pose()
-    # print(f"{camera_world_pose=}")
-    # camera_world_rotation = quats_to_rot_matrices(camera_world_pose[1])
-    # print(f"{camera_world_rotation=}")
+    # camera.set_world_pose()
+    # stage = get_current_stage()
+    # make_camera_kinematic_rigid(stage, camera_prim_path)
+
+    # for i in range(50):
+    #     simulation_context.step(render=True)
+
+    # exit()
 
     # Object (Marker)
     marker = XFormPrim(marker_prim_path)
@@ -684,6 +764,16 @@ def main():
     print("\n" + "="*60)
     print("Initializing marker tracking...")
     print("="*60)
+    for i in range(50):
+        simulation_context.step(render=True)
+
+    # camera_world_pose = camera.get_world_pose()
+    # print(f"{camera_world_pose=}")
+    # camera_world_rotation = quats_to_rot_matrices(camera_world_pose[1])
+    # print(f"{camera_world_rotation=}")
+    # exit()
+
+    # simulation_context.step(render=True)
     initial_T_world_camera, initial_T_camera_marker = initialize_marker_tracking(camera, marker)
     
     marker_in_camera_pos, marker_in_camera_quat = transform_matrix_to_pose(initial_T_camera_marker)
