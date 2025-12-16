@@ -63,5 +63,5 @@ def apply_mask_to_rgb(
 if __name__ == "__main__":
     # episode_dir = "/home/ani/Downloads/episodes_subsampled_new_B_mode/episode_0000"
     for i in range(60):
-        episode_dir = f"/portal/test_data/episodes_subsampled_1210_B_mode_aug/episode_00{i:02d}"
+        episode_dir = f"/portal/test_data/data_12_15/episodes_sync_B_mode_aug/episode_00{i:02d}"
         apply_mask_to_rgb(episode_dir)

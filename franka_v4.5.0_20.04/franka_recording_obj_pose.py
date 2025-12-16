@@ -657,38 +657,38 @@ def hold_position(art, sim, ik, camera, episode_dir, record=False, duration=2.0)
 
 
 
-def make_camera_kinematic_rigid(stage, camera_prim_path):
-    """
-    强制移除相机的物理属性（刚体、碰撞、关节），使其成为纯粹的运动学子物体。
-    这样它会 100% 刚性地跟随父物体，不会有任何物理惯性或抖动。
-    """
-    print(f"Forcefully removing physics properties from {camera_prim_path} to stop jitter...")
+# def make_camera_kinematic_rigid(stage, camera_prim_path):
+#     """
+#     强制移除相机的物理属性（刚体、碰撞、关节），使其成为纯粹的运动学子物体。
+#     这样它会 100% 刚性地跟随父物体，不会有任何物理惯性或抖动。
+#     """
+#     print(f"Forcefully removing physics properties from {camera_prim_path} to stop jitter...")
     
-    prim = stage.GetPrimAtPath(camera_prim_path)
-    if not prim.IsValid():
-        print(f"Error: Camera prim {camera_prim_path} not found!")
-        return
+#     prim = stage.GetPrimAtPath(camera_prim_path)
+#     if not prim.IsValid():
+#         print(f"Error: Camera prim {camera_prim_path} not found!")
+#         return
 
-    # 1. 移除刚体 API (Rigid Body) - 让它失去质量和惯性
-    if prim.HasAPI(UsdPhysics.RigidBodyAPI):
-        prim.RemoveAPI(UsdPhysics.RigidBodyAPI)
-        print("  - Removed RigidBodyAPI")
+#     # 1. 移除刚体 API (Rigid Body) - 让它失去质量和惯性
+#     if prim.HasAPI(UsdPhysics.RigidBodyAPI):
+#         prim.RemoveAPI(UsdPhysics.RigidBodyAPI)
+#         print("  - Removed RigidBodyAPI")
 
-    # 2. 移除碰撞 API (Collision) - 防止它和手臂或其他物体发生碰撞计算
-    if prim.HasAPI(UsdPhysics.CollisionAPI):
-        prim.RemoveAPI(UsdPhysics.CollisionAPI)
-        print("  - Removed CollisionAPI")
+#     # 2. 移除碰撞 API (Collision) - 防止它和手臂或其他物体发生碰撞计算
+#     if prim.HasAPI(UsdPhysics.CollisionAPI):
+#         prim.RemoveAPI(UsdPhysics.CollisionAPI)
+#         print("  - Removed CollisionAPI")
         
-    # 3. 如果有质量属性，强制设为 0 (双重保险)
-    mass_api = UsdPhysics.MassAPI(prim)
-    if mass_api:
-        mass_api.GetMassAttr().Set(0.0)
+#     # 3. 如果有质量属性，强制设为 0 (双重保险)
+#     mass_api = UsdPhysics.MassAPI(prim)
+#     if mass_api:
+#         mass_api.GetMassAttr().Set(0.0)
     
-    # 4. [关键] 确保它是父物体的直接子级，并且没有 Joint 连接
-    # 如果你的 USD 结构里，相机是通过 Joint 连接的，这步需要额外处理。
-    # 但通常移除 RigidBody 就足以让 Joint 失效（因为没有质量了），它会退化为层级跟随。
+#     # 4. [关键] 确保它是父物体的直接子级，并且没有 Joint 连接
+#     # 如果你的 USD 结构里，相机是通过 Joint 连接的，这步需要额外处理。
+#     # 但通常移除 RigidBody 就足以让 Joint 失效（因为没有质量了），它会退化为层级跟随。
     
-    print("Camera is now a kinematic ghost attached to the hand.")
+#     print("Camera is now a kinematic ghost attached to the hand.")
 
 
 def main():

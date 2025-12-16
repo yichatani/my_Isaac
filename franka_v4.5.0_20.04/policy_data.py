@@ -16,7 +16,7 @@ def load_episode_eef_pose(episode_dir):
     data = np.load(pose_path)
     # print(f"{data=}")
     # exit()
-    poses = data["ee_pose"]   # (T, 8)
+    poses = data["poses"]   # (T, 8)
     return poses
 
 def load_episode_obj2camera_pose(episode_dir):
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     #     "episodes_subsampled"
     # )
     # episodes_root = "/home/ani/isaacsim/my_collections/episodes_subsampled"
-    episodes_root = "/portal/test_data/episodes_subsampled_1210_B_mode_aug"
+    episodes_root = "/portal/test_data/data_12_15/episodes_sync_B_mode_aug"
 
     save_dir = os.path.join(episodes_root, "data_seg")
     convert_episodes_to_npz(episodes_root, save_dir)
