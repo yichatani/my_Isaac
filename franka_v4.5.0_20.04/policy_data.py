@@ -85,6 +85,10 @@ def process_episode(episode_dir):
     # 最后一维：夹爪宽度（绝对值）
     actions[:, 7] = eef_poses[1:, 7]
 
+    # 把夹爪宽度的绝对值也附在marker_poses之后
+    gripper = eef_poses[:-1, 7:8]  # (T-1, 1) 注意 7:8 保持二维
+    states = np.concatenate([states, gripper], axis=1)  # (T-1, 8)
+
     # ---- images ----
     images = images[:-1]
 
@@ -150,7 +154,7 @@ if __name__ == "__main__":
     #     "episodes_subsampled"
     # )
     # episodes_root = "/home/ani/isaacsim/my_collections/episodes_subsampled"
-    episodes_root = "/portal/test_data/data_12_15/episodes_sync_B_mode_aug"
+    episodes_root = "/portal/test_data/data_12_16_aug"
 
     save_dir = os.path.join(episodes_root, "data_seg")
     convert_episodes_to_npz(episodes_root, save_dir)

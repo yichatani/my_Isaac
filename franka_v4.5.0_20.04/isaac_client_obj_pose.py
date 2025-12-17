@@ -46,6 +46,7 @@ ACTION_BIND = "tcp://192.168.56.56:5557"  # policy → isaac
 TARGET_H, TARGET_W = 448, 448
 OBS_STEPS = 3
 IMG_STEPS = 3
+HORIZON = 4
 
 # Marker prim path
 marker_prim_path = "/_40_large_marker"
@@ -316,7 +317,7 @@ def main():
         robot_description_path="/home/ani/isaacsim/exts/isaacsim.robot_motion.motion_generation/motion_policy_configs/FR3/rmpflow/fr3_robot_description.yaml",
     )
 
-    camera = initial_camera("/fr3/fr3_hand_tcp/hand", 15, (1920, 1080))
+    camera = initial_camera("/fr3/fr3_hand_tcp/hand", 10, (1920, 1080))
 
     # Initialize marker
     marker = XFormPrim(marker_prim_path)
@@ -325,7 +326,9 @@ def main():
 
     state_buf = deque(maxlen=OBS_STEPS)
     img_buf = deque(maxlen=IMG_STEPS)
-    action_queue = deque()
+    # action_queue = deque()
+    action_queue = deque(maxlen=HORIZON)
+
 
     sim.play()
     
@@ -348,16 +351,9 @@ def main():
 
     while sim.is_playing():
         # =========================================================
-        # 0) （可选但推荐）本 step 执行动作：最多一个 action
-        #    注意：这里只 apply，不 step
-        # =========================================================
-        if len(action_queue) > 0:
-            delta = action_queue.popleft()
-            apply_delta_action_step(art, ik, delta)
-
-        # =========================================================
         # 1) 本循环唯一一次物理推进（固定位置，绝不在分支里 step）
         # =========================================================
+        # for i in range(5):
         sim.step(render=True)
         step_idx += 1
 
@@ -380,18 +376,26 @@ def main():
             initial_T_world_camera,
             initial_T_camera_marker
         )
-
         if marker_pose is None:
             continue
+
+        tcp_pose = get_tcp_pose(art,ik)
+        if tcp_pose is None:
+            continue
+        state = np.concatenate([
+            marker_pose,          # (7,)
+            tcp_pose[7:8],        # (1,)
+        ], axis=0)   
 
         # =========================================================
         # 3) 写入 buffer：每一次成功采样严格对应一个 sim.step 后状态
         # =========================================================
-        state_buf.append(marker_pose)
+        state_buf.append(state)
         img_buf.append(rgb)
 
         # （可选）低频打印，避免每步 print 卡顿
-        if step_idx % 30 == 0:
+        # if step_idx % 30 == 0:
+        if step_idx % 1 == 0:
             print(f"[Isaac] step={step_idx}, buf={len(state_buf)}/{OBS_STEPS}, action_q={len(action_queue)}")
 
         # =========================================================
@@ -417,6 +421,34 @@ def main():
             else:
                 # buffer 还没满，不请求 action
                 pass
+        
+        if len(action_queue) == 4:
+            if len(state_buf) >= OBS_STEPS and len(img_buf) >= IMG_STEPS:
+                obs = {
+                    "state": np.stack(state_buf, axis=0),
+                    "image": np.stack(img_buf, axis=0),
+                }
+
+                # Isaac -> Seg (REQ)
+                seg_sock.send_pyobj(obs)
+                seg_sock.recv()
+
+                # Policy -> Isaac (REP)
+                action_seq = action_sock.recv_pyobj()
+                action_sock.send(b"ok")
+
+                action_queue.extend(action_seq)
+            else:
+                # buffer 还没满，不请求 action
+                pass
+
+        # =========================================================
+        # 5) （可选但推荐）本 step 执行动作：最多一个 action
+        #    注意：这里只 apply，不 step
+        # =========================================================
+        if len(action_queue) > 0:
+            delta = action_queue.popleft()
+            apply_delta_action_step(art, ik, delta)
 
     sim.stop()
     simulation_app.close()

@@ -825,6 +825,7 @@ def main():
     print("Phase 4: Closing gripper...")
     set_gripper(art, width=0.0, sim=simulation_context, ik=ik, camera=camera,
                 episode_dir=episode_dir, record=True, steps=50)
+    hold_position(art, simulation_context, ik, camera, episode_dir, record=True, duration=2.0)
     
     print("Phase 5: Returning with object...")
     arm_const_speed(art, waypoints_joint_position_2[:7], simulation_context, ik, camera,
