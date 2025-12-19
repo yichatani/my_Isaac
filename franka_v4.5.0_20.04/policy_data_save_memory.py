@@ -61,6 +61,9 @@ def process_episode(episode_dir):
 
     # ---- states ----
     states = marker_poses[:-1]
+    # # 把夹爪宽度的绝对值也附在marker_poses之后
+    # gripper = eef_poses[:-1, 7:8]  # (T-1, 1) 注意 7:8 保持二维
+    # states = np.concatenate([states, gripper], axis=1)  # (T-1, 8)
 
     # ---- actions ----
     actions = np.zeros_like(eef_poses[:-1])
@@ -201,6 +204,6 @@ def convert_episodes_to_npz(episodes_root, save_dir):
 # ------------------------------------------------
 
 if __name__ == "__main__":
-    episodes_root = "/portal/test_data/data_12_16_aug"
+    episodes_root = "/portal/test_data/episodes_12_17/episodes_sync_B_mode_aug"
     save_dir = os.path.join(episodes_root, "data_seg")
     convert_episodes_to_npz(episodes_root, save_dir)

@@ -83,7 +83,7 @@ def initial_camera(camera_path, frequency, resolution):
 
     camera.initialize()
     camera.add_motion_vectors_to_frame()
-    camera.add_distance_to_image_plane_to_frame()
+    camera.add_distance_to_image_plane_to_frame()  # ← 确保depth已开启
     camera = set_camera_parameters(camera)
 
     print("Camera Initialized!")
@@ -108,6 +108,32 @@ def set_camera_parameters(camera):
     camera.set_clipping_range(0.1, 3.0)
 
     return camera
+
+# ============ MODIFIED: 新增获取RGB和Depth的函数 ============
+def get_rgb_and_depth(cam):
+    """
+    Get both RGB and depth images from camera
+    Returns: dict with 'rgb' and 'depth' keys, or None if camera data unavailable
+    """
+    frame = cam.get_current_frame()
+    if frame is None:
+        return None
+    
+    rgba = frame.get("rgba", None)
+    depth = frame.get("distance_to_image_plane", None)
+    
+    if rgba is None or depth is None:
+        return None
+    
+    rgb = rgba[:, :, :3].astype(np.uint8)
+    rgb_resized = cv2.resize(rgb, (TARGET_W, TARGET_H), interpolation=cv2.INTER_LINEAR)
+    depth_resized = cv2.resize(depth, (TARGET_W, TARGET_H), interpolation=cv2.INTER_NEAREST)
+    
+    return {
+        "rgb": rgb_resized,
+        "depth": depth_resized
+    }
+# ==========================================================
 
 def get_rgb(cam):
     frame = cam.get_current_frame()
@@ -326,6 +352,9 @@ def main():
 
     state_buf = deque(maxlen=OBS_STEPS)
     img_buf = deque(maxlen=IMG_STEPS)
+    # ============ MODIFIED: 新增depth buffer ============
+    depth_buf = deque(maxlen=IMG_STEPS)
+    # ===================================================
     # action_queue = deque()
     action_queue = deque(maxlen=HORIZON)
 
@@ -358,7 +387,7 @@ def main():
         step_idx += 1
 
         # =========================================================
-        # 2) step 后采样：保证 rgb / marker_pose 同一 tick
+        # 2) step 后采样：保证 rgb / depth / marker_pose 同一 tick
         # =========================================================
         if initial_T_world_camera is None or initial_T_camera_marker is None:
             # marker tracking 未初始化：本 step 不采集，但时间轴不乱
@@ -366,10 +395,15 @@ def main():
                 print("[Isaac] Marker tracking not initialized yet...")
             continue
 
-        rgb = get_rgb(camera)
-        if rgb is None:
+        # ============ MODIFIED: 使用新函数同时获取RGB和Depth ============
+        camera_data = get_rgb_and_depth(camera)
+        if camera_data is None:
             # 相机偶尔拿不到帧：跳过采样，但不额外 step
             continue
+        
+        rgb = camera_data["rgb"]
+        depth = camera_data["depth"]
+        # ==============================================================
 
         marker_pose = compute_marker_pose_from_camera_motion(
             camera,
@@ -379,20 +413,24 @@ def main():
         if marker_pose is None:
             continue
 
-        # tcp_pose = get_tcp_pose(art,ik)
-        # if tcp_pose is None:
-        #     continue
-        # state = np.concatenate([
-        #     marker_pose,          # (7,)
-        #     tcp_pose[7:8],        # (1,)
-        # ], axis=0)   
-        state = marker_pose
+        tcp_pose = get_tcp_pose(art,ik)
+        if tcp_pose is None:
+            continue
+        state = np.concatenate([
+            marker_pose,          # (7,)
+            tcp_pose[7:8],        # (1,)
+        ], axis=0)   
+
+        # state = marker_pose
 
         # =========================================================
         # 3) 写入 buffer：每一次成功采样严格对应一个 sim.step 后状态
         # =========================================================
         state_buf.append(state)
         img_buf.append(rgb)
+        # ============ MODIFIED: 新增depth写入buffer ============
+        depth_buf.append(depth)
+        # ======================================================
 
         # （可选）低频打印，避免每步 print 卡顿
         # if step_idx % 30 == 0:
@@ -401,14 +439,18 @@ def main():
 
         # =========================================================
         # 4) 需要新 action 时：只在 action_queue 为空且 buffer 满时请求
-        #    注意：这段可能阻塞，但不会破坏“1 loop = 1 step”的结构
+        #    注意：这段可能阻塞，但不会破坏"1 loop = 1 step"的结构
         # =========================================================
         if len(action_queue) == 0:
-            if len(state_buf) >= OBS_STEPS and len(img_buf) >= IMG_STEPS:
+            # ============ MODIFIED: 检查depth_buf也满了 ============
+            if len(state_buf) >= OBS_STEPS and len(img_buf) >= IMG_STEPS and len(depth_buf) >= IMG_STEPS:
+                # ============ MODIFIED: observation字典新增depth键 ============
                 obs = {
                     "state": np.stack(state_buf, axis=0),
                     "image": np.stack(img_buf, axis=0),
+                    "depth": np.stack(depth_buf, axis=0),  # ← 新增depth数据
                 }
+                # ===========================================================
 
                 # Isaac -> Seg (REQ)
                 seg_sock.send_pyobj(obs)
