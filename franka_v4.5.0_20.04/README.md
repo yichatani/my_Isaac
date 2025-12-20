@@ -12,7 +12,7 @@
 ```
 
 ```bash
-./python.sh my_collections/process_data.py # subsample data
+./python.sh my_collections/process_data.py # subsample data, also contain points processing
 ./python.sh my_collections/apply_mask_to_rgb.py
 ./python.sh my_collections/policy_data.py # process data for policy
 ```
