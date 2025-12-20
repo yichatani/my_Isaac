@@ -3,8 +3,11 @@ import numpy as np
 import open3d as o3d
 from PIL import Image
 import cv2
+import torch
+from pytorch3d.ops import sample_farthest_points
 import matplotlib.pyplot as plt
 import shutil
+
 
 PORTAL_DIR = "/portal/test_data"
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,8 +24,8 @@ def reconstruct_pointcloud(episode_dir, frame_idx=0, visualize=False):
     Returns:
         point_cloud: (Np, 6) numpy array, columns: [x, y, z, r, g, b]
     """
-    rgb_path = os.path.join(episode_dir, 'rgb', f'{frame_idx:06d}.png')
-    depth_path = os.path.join(episode_dir, 'depth', f'{frame_idx:06d}.png')
+    rgb_path = os.path.join(episode_dir, 'rgb_masked', f'rgb_{frame_idx:06d}.png')
+    depth_path = os.path.join(episode_dir, 'depth_masked', f'depth_{frame_idx:06d}.png')
     
     colors = np.array(Image.open(rgb_path), dtype=np.float32) / 255.0
     depths = np.array(Image.open(depth_path)) / 1000.0
@@ -46,15 +49,97 @@ def reconstruct_pointcloud(episode_dir, frame_idx=0, visualize=False):
         print("Warning: Empty point cloud!")
         return np.zeros((0, 6), dtype=np.float32)
 
-    if visualize:
-        cloud = o3d.geometry.PointCloud()
-        cloud.points = o3d.utility.Vector3dVector(points)
-        cloud.colors = o3d.utility.Vector3dVector(colors)
-        o3d.visualization.draw_geometries([cloud])
-
     # Combine [x, y, z, r, g, b]
     point_cloud = np.concatenate([points, colors], axis=1)  # shape: (Np, 6)
+
+    point_cloud = preprocess_point_cloud(point_cloud)
+
+    # print(f"{point_cloud.shape=}")
+    # print(f"{point_cloud[...,3:].shape=}")
+
+    if visualize:
+        cloud = o3d.geometry.PointCloud()
+        cloud.points = o3d.utility.Vector3dVector(point_cloud[...,:3])
+        cloud.colors = o3d.utility.Vector3dVector(point_cloud[...,3:])
+        # o3d.visualization.draw_geometries([cloud])
+        coord = o3d.geometry.TriangleMesh.create_coordinate_frame(
+            size=0.05,
+            origin=[0, 0, 0]
+        )
+        o3d.visualization.draw_geometries([cloud, coord])
+
     return point_cloud
+
+
+
+def preprocess_point_cloud(points, num_points=1024):
+
+    WORK_SPACE = [[-0.20, 0.20], [-0.20, 0.20], [0.00, 0.50]] 
+    mask = (
+        (points[:, 0] > WORK_SPACE[0][0]) & (points[:, 0] < WORK_SPACE[0][1]) &
+        (points[:, 1] > WORK_SPACE[1][0]) & (points[:, 1] < WORK_SPACE[1][1]) &
+        (points[:, 2] > WORK_SPACE[2][0]) & (points[:, 2] < WORK_SPACE[2][1])
+    )
+    points = points[mask]
+    if points.shape[0] == 0:
+        raise ValueError("All points filtered out by WORK_SPACE constraints.")
+
+    # print(f"{points.shape=}")
+    # print(f"{len(points.shape)=}")
+
+    pt_tensor = torch.from_numpy(points[...,:3]).unsqueeze(0)
+
+    sampled_pts, indices = sample_farthest_points(pt_tensor, K=num_points)
+    sampled_pts = sampled_pts.squeeze(0).cpu().numpy()
+    indices = indices.cpu().squeeze(0)
+    rgb = points[indices.numpy(), 3:]
+    # return np.hstack((sampled_pts, rgb))
+    # print(f"{sampled_pts.shape=}")
+    # print(f"{rgb.shape=}")
+    points_color = np.concatenate([sampled_pts, rgb], axis=1)
+    # print(f"{points_color.shape=}")
+    return points_color
+
+
+def visualize_pointcloud_sequence(episode_dir, start=0, end=100, step=1):
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name="PointCloud Sequence")
+
+    cloud = o3d.geometry.PointCloud()
+    coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05)
+
+    vis.add_geometry(cloud)
+    vis.add_geometry(coord)
+
+    first_frame = True
+
+    for frame_idx in range(start, end):
+        point_cloud = reconstruct_pointcloud(
+            episode_dir,
+            frame_idx=frame_idx,
+            visualize=False
+        )
+
+        xyz = point_cloud[:, :3]
+        colors = point_cloud[:, 3:6]
+
+        cloud.points = o3d.utility.Vector3dVector(xyz)
+        cloud.colors = o3d.utility.Vector3dVector(colors)
+
+        if first_frame:
+            ctr = vis.get_view_control()
+            bbox = cloud.get_axis_aligned_bounding_box()
+            ctr.set_lookat(bbox.get_center())
+            ctr.set_front([0, 0, -1])
+            ctr.set_up([0, -1, 0])
+            ctr.set_zoom(0.8)
+            first_frame = False
+
+        vis.update_geometry(cloud)
+        vis.poll_events()
+        vis.update_renderer()
+
+    vis.destroy_window()
 
 
 class EpisodeReader:
@@ -195,15 +280,48 @@ if __name__ == '__main__':
     # src_episode_dir = os.path.join(ROOT_DIR, "episodes", "episode_0001")
     # dst_root_dir = os.path.join(ROOT_DIR, "episodes_subsampled")
 
-    src_episode_dir = os.path.join(PORTAL_DIR, "episodes", "episode_0000")
-    dst_root_dir = os.path.join(PORTAL_DIR, "episodes_subsampled")
+    # src_episode_dir = os.path.join(PORTAL_DIR, "episodes", "episode_0000")
+    # dst_root_dir = os.path.join(PORTAL_DIR, "episodes_subsampled")
 
-    subsample_episode(src_episode_dir, dst_root_dir, step=6)
-    print("Done subsampling.")
+    # subsample_episode(src_episode_dir, dst_root_dir, step=6)
+    # print("Done subsampling.")
+
+
 
     # # Example 2: Reconstruct point cloud
-    # episode_dir = os.path.join(ROOT_DIR, "episodes", "episode_0000")
+    # ROOT_DIR = "/portal/test_data/episodes_12_17/episodes_sync_B_mode_aug"
+    # # episode_dir = os.path.join(ROOT_DIR, "episodes", "episode_0000")
+    # episode_dir = os.path.join(ROOT_DIR, "episode_0006")
     # reconstruct_pointcloud(episode_dir, frame_idx=0, visualize=True)
+
+
+    point_cloud = np.load("/portal/test_data/episodes_12_17/" \
+    "episodes_sync_B_mode_aug/episode_0001/pointclouds/pointcloud_000030.npy")
+    cloud = o3d.geometry.PointCloud()
+    cloud.points = o3d.utility.Vector3dVector(point_cloud[...,:3])
+    cloud.colors = o3d.utility.Vector3dVector(point_cloud[...,3:])
+    # o3d.visualization.draw_geometries([cloud])
+    coord = o3d.geometry.TriangleMesh.create_coordinate_frame(
+        size=0.05,
+        origin=[0, 0, 0]
+    )
+    o3d.visualization.draw_geometries([cloud, coord])
+
+
+
+    # episode_dir = os.path.join(
+    #     "/portal/test_data/episodes_12_17/episodes_sync_B_mode_aug",
+    #     "episode_0000"
+    # )
+    # visualize_pointcloud_sequence(
+    #     episode_dir,
+    #     start=0,
+    #     end=80,
+    #     step=1
+    # )
+
+
+
 
     # # Example 3: Read frames
     # reader = EpisodeReader(os.path.join(ROOT_DIR, "episodes", "episode_0000"))
