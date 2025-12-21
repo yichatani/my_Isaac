@@ -303,7 +303,9 @@ def apply_delta_action_step(art, ik, delta):
 
     cmd = q.copy()
     cmd[:7] = q_target
-    cmd[7] = cmd[8] = np.clip(delta[7], 0.0, 0.08) / 2.0
+    # cmd[7] = cmd[8] = np.clip(delta[7], 0.0, 0.08) / 2.0
+    if delta[7] < 0.04:
+        cmd[7] = cmd[8] = 0.0
 
     art.apply_action(ArticulationActions(joint_positions=cmd))
 
@@ -321,9 +323,9 @@ def main():
 
     art = Articulation("/fr3")
     art.initialize()
-    # # 真正的初始位置
-    initial_joint_position = np.array([-0.47200201, -0.53468038, 0.41885995, -2.64197119, 0.24759319,
-                                       2.1317271, 0.54534657, 0.04, 0.04])
+    # # # 真正的初始位置
+    # initial_joint_position = np.array([-0.47200201, -0.53468038, 0.41885995, -2.64197119, 0.24759319,
+    #                                    2.1317271, 0.54534657, 0.04, 0.04])
     # # x方向（向前）平移2cm
     # initial_joint_position = np.array([-0.49183851, -0.46410037,  0.43962773, -2.58558015,  0.22938865,
     #                                         2.14651702,  0.56456788,  0.04,  0.04])
@@ -331,8 +333,8 @@ def main():
     # initial_joint_position = np.array([-0.5121197 , -0.39750309,  0.46064247, -2.53006411,  0.208458  ,
     #                                         2.16011791,  0.58498179,  0.04      ,  0.04      ])
     # y方向（向右）平移2cm
-    # initial_joint_position = np.array([-0.45352914, -0.54309528,  0.45311303, -2.64096512,  0.26861368,
-    #                             2.12694205,  0.58240931,  0.04      ,  0.04      ])
+    initial_joint_position = np.array([-0.45352914, -0.54309528,  0.45311303, -2.64096512,  0.26861368,
+                                2.12694205,  0.58240931,  0.04      ,  0.04      ])
 
     for i in range(50):
         art.set_joint_positions(initial_joint_position)
@@ -413,15 +415,15 @@ def main():
         if marker_pose is None:
             continue
 
-        tcp_pose = get_tcp_pose(art,ik)
-        if tcp_pose is None:
-            continue
-        state = np.concatenate([
-            marker_pose,          # (7,)
-            tcp_pose[7:8],        # (1,)
-        ], axis=0)   
+        # tcp_pose = get_tcp_pose(art,ik)
+        # if tcp_pose is None:
+        #     continue
+        # state = np.concatenate([
+        #     marker_pose,          # (7,)
+        #     tcp_pose[7:8],        # (1,)
+        # ], axis=0)   
 
-        # state = marker_pose
+        state = marker_pose
 
         # =========================================================
         # 3) 写入 buffer：每一次成功采样严格对应一个 sim.step 后状态
